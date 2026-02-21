@@ -76,6 +76,37 @@ final class MemberController extends BaseController
             'title' => 'Add Marriage',
             'error' => $_SESSION['flash_error'] ?? null,
             'success' => $_SESSION['flash_success'] ?? null,
+            'marriages' => $this->listMarriages(),
+        ]);
+        unset($_SESSION['flash_error'], $_SESSION['flash_success']);
+    }
+
+    public function editMarriage(): void
+    {
+        $id = (int)($_GET['id'] ?? $_POST['marriage_id'] ?? 0);
+        if ($id <= 0) {
+            $_SESSION['flash_error'] = 'Invalid marriage id.';
+            header('Location: /index.php?route=member/add-marriage');
+            exit;
+        }
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $this->updateMarriage($id);
+            return;
+        }
+
+        $marriage = $this->findMarriageById($id);
+        if ($marriage === null) {
+            $_SESSION['flash_error'] = 'Marriage not found.';
+            header('Location: /index.php?route=member/add-marriage');
+            exit;
+        }
+
+        $this->render('member/marriage_edit', [
+            'title' => 'Edit Marriage',
+            'marriage' => $marriage,
+            'error' => $_SESSION['flash_error'] ?? null,
+            'success' => $_SESSION['flash_success'] ?? null,
         ]);
         unset($_SESSION['flash_error'], $_SESSION['flash_success']);
     }
@@ -83,6 +114,15 @@ final class MemberController extends BaseController
     public function familyList(): void
     {
         $items = $this->people->all(500);
+        $povId = current_pov_id();
+        foreach ($items as &$item) {
+            $item['age'] = $this->calculateAge($item);
+            $item['relationship_status'] = $povId > 0
+                ? (string)($this->engine->resolve($povId, (int)$item['person_id'])['title_en'] ?? 'Unknown')
+                : '-';
+            $item['marital_status'] = ((int)($item['spouse_id'] ?? 0) > 0) ? 'Married/Linked' : 'Single/Unknown';
+        }
+        unset($item);
         $this->render('member/family_list', ['title' => 'Family List', 'items' => $items]);
     }
 
@@ -157,6 +197,7 @@ final class MemberController extends BaseController
         $parentPersonId = (int)($_POST['parent_person_id'] ?? 0);
         $parentLinkType = (string)($_POST['parent_link_type'] ?? 'father');
         $birthOrder = $this->normalizeInt($_POST['birth_order'] ?? null);
+        $spouseMarriageDate = $this->normalizeDate($_POST['spouse_marriage_date'] ?? null);
 
         if (!in_array($gender, ['male', 'female', 'other', 'unknown'], true)) {
             $gender = 'unknown';
@@ -209,7 +250,7 @@ final class MemberController extends BaseController
             $defaultAnchorId = (int)(app_user()['person_id'] ?? 0);
             $anchorId = $referencePersonId > 0 ? $referencePersonId : ($defaultAnchorId > 0 ? $defaultAnchorId : (int)$targetPersonId);
             if ($relationType !== 'none' && $anchorId > 0 && $targetPersonId > 0) {
-                $this->applyRelation($anchorId, $targetPersonId, $relationType, $parentType, $birthOrder);
+                $this->applyRelation($anchorId, $targetPersonId, $relationType, $parentType, $birthOrder, $spouseMarriageDate);
             }
 
             $this->db->commit();
@@ -337,7 +378,7 @@ final class MemberController extends BaseController
         exit;
     }
 
-    private function applyRelation(int $anchorId, int $targetId, string $relationType, string $parentType, ?int $birthOrder): void
+    private function applyRelation(int $anchorId, int $targetId, string $relationType, string $parentType, ?int $birthOrder, ?string $spouseMarriageDate = null): void
     {
         if ($anchorId === $targetId && in_array($relationType, ['father', 'mother', 'brother', 'sister', 'child', 'spouse'], true)) {
             return;
@@ -347,6 +388,7 @@ final class MemberController extends BaseController
             $u = $this->db->prepare('UPDATE persons SET spouse_id = :spouse WHERE person_id = :id');
             $u->execute([':spouse' => $targetId, ':id' => $anchorId]);
             $u->execute([':spouse' => $anchorId, ':id' => $targetId]);
+            $this->upsertMarriageByPair($anchorId, $targetId, $spouseMarriageDate);
             return;
         }
 
@@ -436,5 +478,120 @@ final class MemberController extends BaseController
     {
         $text = trim((string)$value);
         return $text === '' ? null : $text;
+    }
+
+    private function calculateAge(array $person): ?int
+    {
+        $dobRaw = trim((string)($person['date_of_birth'] ?? ''));
+        $dodRaw = trim((string)($person['date_of_death'] ?? ''));
+        if ($dobRaw !== '') {
+            try {
+                $dob = new DateTimeImmutable($dobRaw);
+                $end = $dodRaw !== '' ? new DateTimeImmutable($dodRaw) : new DateTimeImmutable('today');
+                if ($end < $dob) {
+                    return null;
+                }
+                return $dob->diff($end)->y;
+            } catch (Throwable) {
+                return null;
+            }
+        }
+        $by = (int)($person['birth_year'] ?? 0);
+        if ($by > 0) {
+            return max(0, (int)date('Y') - $by);
+        }
+        return null;
+    }
+
+    private function listMarriages(): array
+    {
+        $sql = 'SELECT m.marriage_id, m.person1_id, m.person2_id, m.marriage_date, m.divorce_date, m.status,
+                       p1.full_name AS person1_name, p2.full_name AS person2_name
+                FROM marriages m
+                INNER JOIN persons p1 ON p1.person_id = m.person1_id
+                INNER JOIN persons p2 ON p2.person_id = m.person2_id
+                ORDER BY m.marriage_id DESC
+                LIMIT 200';
+        return $this->db->query($sql)->fetchAll() ?: [];
+    }
+
+    private function findMarriageById(int $id): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT m.marriage_id, m.person1_id, m.person2_id, m.marriage_date, m.divorce_date, m.status,
+                    p1.full_name AS person1_name, p2.full_name AS person2_name
+             FROM marriages m
+             INNER JOIN persons p1 ON p1.person_id = m.person1_id
+             INNER JOIN persons p2 ON p2.person_id = m.person2_id
+             WHERE m.marriage_id = :id
+             LIMIT 1'
+        );
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    private function updateMarriage(int $id): void
+    {
+        if (!$this->verifyCsrf((string)($_POST['csrf_token'] ?? ''))) {
+            $_SESSION['flash_error'] = 'Invalid CSRF token.';
+            header('Location: /index.php?route=member/edit-marriage&id=' . $id);
+            exit;
+        }
+        $status = (string)($_POST['status'] ?? 'married');
+        if (!in_array($status, ['married', 'divorced', 'widowed'], true)) {
+            $status = 'married';
+        }
+
+        $stmt = $this->db->prepare(
+            'UPDATE marriages
+             SET marriage_date = :md, divorce_date = :dd, status = :status
+             WHERE marriage_id = :id'
+        );
+        $stmt->execute([
+            ':md' => $this->normalizeDate($_POST['marriage_date'] ?? null),
+            ':dd' => $this->normalizeDate($_POST['divorce_date'] ?? null),
+            ':status' => $status,
+            ':id' => $id,
+        ]);
+        $_SESSION['flash_success'] = 'Marriage updated.';
+        header('Location: /index.php?route=member/edit-marriage&id=' . $id);
+        exit;
+    }
+
+    private function upsertMarriageByPair(int $person1Id, int $person2Id, ?string $marriageDate): void
+    {
+        $check = $this->db->prepare(
+            'SELECT marriage_id
+             FROM marriages
+             WHERE (person1_id = :a1 AND person2_id = :b1)
+                OR (person1_id = :a2 AND person2_id = :b2)
+             LIMIT 1'
+        );
+        $check->execute([
+            ':a1' => $person1Id,
+            ':b1' => $person2Id,
+            ':a2' => $person2Id,
+            ':b2' => $person1Id,
+        ]);
+        $row = $check->fetch();
+        if ($row) {
+            if ($marriageDate !== null) {
+                $upd = $this->db->prepare('UPDATE marriages SET marriage_date = COALESCE(marriage_date, :md) WHERE marriage_id = :id');
+                $upd->execute([':md' => $marriageDate, ':id' => (int)$row['marriage_id']]);
+            }
+            return;
+        }
+
+        $ins = $this->db->prepare(
+            'INSERT INTO marriages (person1_id, person2_id, marriage_date, divorce_date, status)
+             VALUES (:p1, :p2, :md, NULL, :status)'
+        );
+        $ins->execute([
+            ':p1' => $person1Id,
+            ':p2' => $person2Id,
+            ':md' => $marriageDate,
+            ':status' => 'married',
+        ]);
     }
 }

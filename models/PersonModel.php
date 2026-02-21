@@ -46,7 +46,7 @@ final class PersonModel
     public function all(int $limit = 500): array
     {
         $stmt = $this->db->prepare(
-            'SELECT person_id, full_name, gender, birth_year, current_location, native_location, spouse_id, father_id, mother_id
+            'SELECT person_id, full_name, gender, date_of_birth, birth_year, date_of_death, current_location, native_location, spouse_id, father_id, mother_id
              FROM persons
              ORDER BY full_name ASC
              LIMIT :limit'

@@ -120,6 +120,11 @@
       <label class="form-label">Child Birth Order</label>
       <input type="number" name="birth_order" class="form-control" min="1">
     </div>
+
+    <div class="col-md-3" id="spouse_marriage_wrap" style="display:none;">
+      <label class="form-label">Marriage Date (if spouse)</label>
+      <input type="date" name="spouse_marriage_date" class="form-control">
+    </div>
   </div>
 
   <div class="mt-4">
@@ -132,12 +137,15 @@
   var relation = document.getElementById('relation_type');
   var parentWrap = document.getElementById('parent_type_wrap');
   var orderWrap = document.getElementById('birth_order_wrap');
+  var spouseWrap = document.getElementById('spouse_marriage_wrap');
   var fullName = document.getElementById('full_name');
 
   function toggleFields() {
     var isChild = relation.value === 'child';
+    var isSpouse = relation.value === 'spouse';
     parentWrap.style.display = isChild ? '' : 'none';
     orderWrap.style.display = isChild ? '' : 'none';
+    spouseWrap.style.display = isSpouse ? '' : 'none';
   }
 
   function attachSearch(inputId, hiddenId, resultsId, onSelect) {

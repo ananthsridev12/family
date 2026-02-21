@@ -50,6 +50,30 @@ function verify_csrf(string $token): bool
     return isset($_SESSION['csrf_token']) && hash_equals((string)$_SESSION['csrf_token'], $token);
 }
 
+function current_pov_id(): int
+{
+    $sessionPov = (int)($_SESSION['pov_person_id'] ?? 0);
+    if ($sessionPov > 0) {
+        return $sessionPov;
+    }
+    return (int)(app_user()['person_id'] ?? 0);
+}
+
+function available_pov_people(): array
+{
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+    if (empty(app_user())) {
+        $cached = [];
+        return $cached;
+    }
+    $stmt = app_db()->query('SELECT person_id, full_name FROM persons ORDER BY full_name ASC LIMIT 500');
+    $cached = $stmt->fetchAll() ?: [];
+    return $cached;
+}
+
 function require_auth(): void
 {
     if (empty(app_user())) {
@@ -109,6 +133,18 @@ switch ($route) {
     case 'logout':
         $authController->logout();
         break;
+    case 'set-pov':
+        require_auth();
+        if ($method !== 'POST' || !verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(400);
+            echo 'Invalid request';
+            break;
+        }
+        $povId = (int)($_POST['pov_person_id'] ?? 0);
+        $_SESSION['pov_person_id'] = $povId > 0 ? $povId : (int)(app_user()['person_id'] ?? 0);
+        $redirect = (string)($_POST['redirect_to'] ?? '/index.php?route=member/family-list');
+        header('Location: ' . $redirect);
+        exit;
 
     case 'person/search':
         require_auth();
@@ -175,6 +211,10 @@ switch ($route) {
     case 'member/add-marriage':
         require_role('member');
         $memberController->addMarriage();
+        break;
+    case 'member/edit-marriage':
+        require_role('member');
+        $memberController->editMarriage();
         break;
     case 'member/person-search':
         require_role('member');

@@ -49,6 +49,38 @@
   </div>
 </form>
 
+<div class="card mt-4">
+  <div class="card-body">
+    <h2 class="h6 mb-3">Existing Marriages</h2>
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Person 1</th>
+            <th>Person 2</th>
+            <th>Marriage Date</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach (($marriages ?? []) as $m): ?>
+          <tr>
+            <td><?= (int)$m['marriage_id'] ?></td>
+            <td><?= htmlspecialchars((string)$m['person1_name'], ENT_QUOTES, 'UTF-8') ?></td>
+            <td><?= htmlspecialchars((string)$m['person2_name'], ENT_QUOTES, 'UTF-8') ?></td>
+            <td><?= htmlspecialchars((string)($m['marriage_date'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+            <td><?= htmlspecialchars((string)$m['status'], ENT_QUOTES, 'UTF-8') ?></td>
+            <td><a class="btn btn-sm btn-outline-primary" href="/index.php?route=member/edit-marriage&id=<?= (int)$m['marriage_id'] ?>">Edit</a></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   function attachSearch(inputId, hiddenId, resultsId) {

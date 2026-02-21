@@ -86,30 +86,80 @@ BEGIN
     END IF;
 END$$
 
+-- NOTE:
+-- Do not create spouse-mutating triggers on persons in MySQL:
+-- this causes #1442 when updating persons inside its own trigger context.
 DROP TRIGGER IF EXISTS trg_person_spouse_insert$$
-CREATE TRIGGER trg_person_spouse_insert
-AFTER INSERT ON persons
-FOR EACH ROW
-BEGIN
-    IF NEW.spouse_id IS NOT NULL THEN
-        UPDATE persons
-        SET spouse_id = NEW.person_id
-        WHERE person_id = NEW.spouse_id
-          AND (spouse_id IS NULL OR spouse_id <> NEW.person_id);
-    END IF;
-END$$
-
 DROP TRIGGER IF EXISTS trg_person_spouse_update$$
-CREATE TRIGGER trg_person_spouse_update
-AFTER UPDATE ON persons
-FOR EACH ROW
-BEGIN
-    IF NEW.spouse_id IS NOT NULL THEN
-        UPDATE persons
-        SET spouse_id = NEW.person_id
-        WHERE person_id = NEW.spouse_id
-          AND (spouse_id IS NULL OR spouse_id <> NEW.person_id);
-    END IF;
-END$$
 
 DELIMITER ;
+
+-- Optional backfill from legacy tables (safe if those tables do not exist).
+SET @has_parent_child := (
+    SELECT COUNT(*)
+    FROM information_schema.TABLES
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'parent_child'
+);
+
+SET @sql := IF(
+    @has_parent_child > 0,
+    "UPDATE persons c
+     INNER JOIN (
+       SELECT child_id, MAX(parent_id) AS parent_id
+       FROM parent_child
+       WHERE parent_type = 'father'
+       GROUP BY child_id
+     ) p ON p.child_id = c.person_id
+     SET c.father_id = p.parent_id
+     WHERE c.father_id IS NULL OR c.father_id = 0",
+    "SELECT 'skip father backfill: parent_child missing'"
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql := IF(
+    @has_parent_child > 0,
+    "UPDATE persons c
+     INNER JOIN (
+       SELECT child_id, MAX(parent_id) AS parent_id
+       FROM parent_child
+       WHERE parent_type = 'mother'
+       GROUP BY child_id
+     ) p ON p.child_id = c.person_id
+     SET c.mother_id = p.parent_id
+     WHERE c.mother_id IS NULL OR c.mother_id = 0",
+    "SELECT 'skip mother backfill: parent_child missing'"
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @has_marriages := (
+    SELECT COUNT(*)
+    FROM information_schema.TABLES
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'marriages'
+);
+
+SET @sql := IF(
+    @has_marriages > 0,
+    "UPDATE persons a
+     INNER JOIN marriages m ON m.person1_id = a.person_id
+     SET a.spouse_id = m.person2_id
+     WHERE a.spouse_id IS NULL OR a.spouse_id = 0",
+    "SELECT 'skip spouse backfill: marriages missing'"
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql := IF(
+    @has_marriages > 0,
+    "UPDATE persons b
+     INNER JOIN marriages m ON m.person2_id = b.person_id
+     SET b.spouse_id = m.person1_id
+     WHERE b.spouse_id IS NULL OR b.spouse_id = 0",
+    "SELECT 'skip spouse backfill: marriages missing'"
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Safety cleanup for invalid self-links.
+UPDATE persons SET father_id = NULL WHERE father_id = person_id;
+UPDATE persons SET mother_id = NULL WHERE mother_id = person_id;
+UPDATE persons SET spouse_id = NULL WHERE spouse_id = person_id;
