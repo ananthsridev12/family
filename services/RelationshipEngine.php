@@ -152,6 +152,23 @@ final class RelationshipEngine
                     $key = ((string)$b['gender'] === 'female') ? 'sister_in_law' : 'brother_in_law';
                     return $this->fromKey($key, null, null, 0, 'In-Law', null);
                 }
+
+                // Spouse's sibling's spouse is also in-law.
+                if ((int)$b['spouse_id'] > 0 && $this->isMutualSpouse($bid, (int)$b['spouse_id'])) {
+                    if ($this->isSibling($spouseId, (int)$b['spouse_id'])) {
+                        $key = ((string)$b['gender'] === 'female') ? 'sister_in_law' : 'brother_in_law';
+                        return $this->fromKey($key, null, null, 0, 'In-Law', null);
+                    }
+                }
+
+                // Spouse's sibling's child (commonly shown as nephew/niece).
+                $fatherId = (int)$b['father_id'];
+                $motherId = (int)$b['mother_id'];
+                if (($fatherId > 0 && $this->isSibling($spouseId, $fatherId))
+                    || ($motherId > 0 && $this->isSibling($spouseId, $motherId))) {
+                    $key = ((string)$b['gender'] === 'female') ? 'niece' : 'nephew';
+                    return $this->fromKey($key, null, null, 1, 'In-Law', null);
+                }
             }
         }
 
@@ -160,6 +177,23 @@ final class RelationshipEngine
             if ($bSpouse !== null && $this->isSibling($aid, (int)$bSpouse['person_id'])) {
                 $key = ((string)$b['gender'] === 'female') ? 'sister_in_law' : 'brother_in_law';
                 return $this->fromKey($key, null, null, 0, 'In-Law', null);
+            }
+        }
+
+        // Parent's child spouse -> son/daughter in-law.
+        if ((int)$b['spouse_id'] > 0 && $this->isMutualSpouse($bid, (int)$b['spouse_id'])) {
+            $bSpouseId = (int)$b['spouse_id'];
+            if ($this->isParentOf($aid, $bSpouseId)) {
+                $isFemale = ((string)$b['gender'] === 'female');
+                return $this->buildResult(
+                    $isFemale ? 'Daughter-in-law' : 'Son-in-law',
+                    $isFemale ? 'மருமகள்' : 'மருமகன்',
+                    null,
+                    null,
+                    1,
+                    'In-Law',
+                    null
+                );
             }
         }
 
@@ -272,6 +306,15 @@ final class RelationshipEngine
         $motherMatch = (int)$a['mother_id'] > 0 && (int)$a['mother_id'] === (int)$b['mother_id'];
 
         return $fatherMatch || $motherMatch;
+    }
+
+    private function isParentOf(int $parentId, int $childId): bool
+    {
+        if (!isset($this->people[$parentId], $this->people[$childId])) {
+            return false;
+        }
+        $child = $this->people[$childId];
+        return (int)$child['father_id'] === $parentId || (int)$child['mother_id'] === $parentId;
     }
 
     private function sideFromEdge(string $firstEdge): string
