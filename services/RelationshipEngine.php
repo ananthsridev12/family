@@ -138,6 +138,18 @@ final class RelationshipEngine
         $aid = (int)$a['person_id'];
         $bid = (int)$b['person_id'];
         $spouseId = (int)$a['spouse_id'];
+        $bSpouseId = (int)$b['spouse_id'];
+
+        // Co-sister: both female, each married to brothers.
+        if ((string)$a['gender'] === 'female'
+            && (string)$b['gender'] === 'female'
+            && $spouseId > 0
+            && $bSpouseId > 0
+            && $this->isMutualSpouse($aid, $spouseId)
+            && $this->isMutualSpouse($bid, $bSpouseId)
+            && $this->isSibling($spouseId, $bSpouseId)) {
+            return $this->fromKey('co_sister', null, null, 0, 'In-Law', null);
+        }
 
         if ($spouseId > 0 && $this->isMutualSpouse($aid, $spouseId)) {
             $spouse = $this->people[$spouseId] ?? null;
@@ -172,10 +184,12 @@ final class RelationshipEngine
             }
         }
 
-        if ((int)$b['spouse_id'] > 0 && $this->isMutualSpouse($bid, (int)$b['spouse_id'])) {
-            $bSpouse = $this->people[(int)$b['spouse_id']] ?? null;
+        if ($bSpouseId > 0 && $this->isMutualSpouse($bid, $bSpouseId)) {
+            $bSpouse = $this->people[$bSpouseId] ?? null;
             if ($bSpouse !== null && $this->isSibling($aid, (int)$bSpouse['person_id'])) {
-                $key = ((string)$b['gender'] === 'female') ? 'sister_in_law' : 'brother_in_law';
+                $key = ((string)$b['gender'] === 'female')
+                    ? $this->sisterInLawKeyForSiblingSpouse($aid, $bid, (int)$bSpouse['person_id'])
+                    : 'brother_in_law';
                 return $this->fromKey($key, null, null, 0, 'In-Law', null);
             }
         }
@@ -317,6 +331,48 @@ final class RelationshipEngine
         return (int)$child['father_id'] === $parentId || (int)$child['mother_id'] === $parentId;
     }
 
+    private function sisterInLawKeyForSiblingSpouse(int $aid, int $bid, int $siblingId): string
+    {
+        $a = $this->people[$aid] ?? null;
+        $b = $this->people[$bid] ?? null;
+        $sibling = $this->people[$siblingId] ?? null;
+        if ($a === null || $b === null || $sibling === null) {
+            return 'sister_in_law';
+        }
+        if ((string)$a['gender'] !== 'male' || (string)$b['gender'] !== 'female' || (string)$sibling['gender'] !== 'male') {
+            return 'sister_in_law';
+        }
+        return $this->isOlderByBirthData($siblingId, $aid) ? 'anni' : 'sister_in_law';
+    }
+
+    private function isOlderByBirthData(int $leftId, int $rightId): bool
+    {
+        $left = $this->people[$leftId] ?? null;
+        $right = $this->people[$rightId] ?? null;
+        if ($left === null || $right === null) {
+            return false;
+        }
+        $leftY = $this->personComparableYear($left);
+        $rightY = $this->personComparableYear($right);
+        if ($leftY === null || $rightY === null) {
+            return false;
+        }
+        return $leftY < $rightY;
+    }
+
+    private function personComparableYear(array $person): ?int
+    {
+        $dob = trim((string)($person['date_of_birth'] ?? ''));
+        if ($dob !== '') {
+            $year = (int)substr($dob, 0, 4);
+            if ($year > 0) {
+                return $year;
+            }
+        }
+        $by = (int)($person['birth_year'] ?? 0);
+        return $by > 0 ? $by : null;
+    }
+
     private function sideFromEdge(string $firstEdge): string
     {
         if ($firstEdge === 'father') {
@@ -424,7 +480,7 @@ final class RelationshipEngine
             return;
         }
 
-        $sql = 'SELECT person_id, full_name, gender, father_id, mother_id, spouse_id FROM persons';
+        $sql = 'SELECT person_id, full_name, gender, date_of_birth, birth_year, father_id, mother_id, spouse_id FROM persons';
         $rows = $this->db->query($sql)->fetchAll();
 
         foreach ($rows as $row) {
