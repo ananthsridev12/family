@@ -177,7 +177,7 @@ final class AdminController extends BaseController
                 }
                 $rows[] = [
                     'generation' => $depth + 1,
-                    'link' => $p['link'],
+                    'link' => $this->ancestorLabel($depth + 1, (string)$pp['gender']),
                     'person_id' => $pid,
                     'name' => (string)$pp['full_name'],
                     'gender' => (string)$pp['gender'],
@@ -216,5 +216,21 @@ final class AdminController extends BaseController
             }
         }
         return $rows;
+    }
+
+    private function ancestorLabel(int $distance, string $gender): string
+    {
+        $isFemale = ($gender === 'female');
+        if ($distance <= 1) {
+            return $isFemale ? 'Mother' : 'Father';
+        }
+        if ($distance === 2) {
+            return $isFemale ? 'Grandmother' : 'Grandfather';
+        }
+        if ($distance === 3) {
+            return $isFemale ? 'Great Grandmother' : 'Great Grandfather';
+        }
+        $n = $distance - 2;
+        return $n . 'th ' . ($isFemale ? 'Great Grandmother' : 'Great Grandfather');
     }
 }

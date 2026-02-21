@@ -4,6 +4,9 @@ declare(strict_types=1);
 final class PersonModel
 {
     private PDO $db;
+    private ?bool $hasFatherColumn = null;
+    private ?bool $hasMotherColumn = null;
+    private ?bool $hasParentChildTable = null;
 
     public function __construct(PDO $db)
     {
@@ -29,9 +32,32 @@ final class PersonModel
 
     public function childrenOf(int $personId): array
     {
-        $stmt = $this->db->prepare('SELECT person_id, full_name FROM persons WHERE father_id = :id OR mother_id = :id ORDER BY full_name ASC LIMIT 100');
-        $stmt->execute([':id' => $personId]);
-        return $stmt->fetchAll();
+        if ($this->supportsParentColumns()) {
+            $stmt = $this->db->prepare(
+                'SELECT person_id, full_name
+                 FROM persons
+                 WHERE father_id = :id OR mother_id = :id
+                 ORDER BY full_name ASC
+                 LIMIT 100'
+            );
+            $stmt->execute([':id' => $personId]);
+            return $stmt->fetchAll();
+        }
+
+        if ($this->hasParentChildTable()) {
+            $stmt = $this->db->prepare(
+                'SELECT p.person_id, p.full_name
+                 FROM parent_child pc
+                 INNER JOIN persons p ON p.person_id = pc.child_id
+                 WHERE pc.parent_id = :id
+                 ORDER BY p.full_name ASC
+                 LIMIT 100'
+            );
+            $stmt->execute([':id' => $personId]);
+            return $stmt->fetchAll();
+        }
+
+        return [];
     }
 
     public function branchMembers(int $branchId, int $limit = 200): array
@@ -94,5 +120,51 @@ final class PersonModel
              WHERE person_id = :id'
         );
         $stmt->execute($data);
+    }
+
+    private function supportsParentColumns(): bool
+    {
+        if ($this->hasFatherColumn !== null && $this->hasMotherColumn !== null) {
+            return $this->hasFatherColumn && $this->hasMotherColumn;
+        }
+
+        try {
+            $stmt = $this->db->prepare(
+                'SELECT COLUMN_NAME
+                 FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = :table
+                   AND COLUMN_NAME IN (\'father_id\', \'mother_id\')'
+            );
+            $stmt->execute([':table' => 'persons']);
+            $found = array_map(static fn(array $r): string => (string)$r['COLUMN_NAME'], $stmt->fetchAll());
+            $this->hasFatherColumn = in_array('father_id', $found, true);
+            $this->hasMotherColumn = in_array('mother_id', $found, true);
+        } catch (Throwable) {
+            $this->hasFatherColumn = false;
+            $this->hasMotherColumn = false;
+        }
+        return $this->hasFatherColumn && $this->hasMotherColumn;
+    }
+
+    private function hasParentChildTable(): bool
+    {
+        if ($this->hasParentChildTable !== null) {
+            return $this->hasParentChildTable;
+        }
+
+        try {
+            $stmt = $this->db->prepare(
+                'SELECT COUNT(*)
+                 FROM information_schema.TABLES
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = :table'
+            );
+            $stmt->execute([':table' => 'parent_child']);
+            $this->hasParentChildTable = ((int)$stmt->fetchColumn() > 0);
+        } catch (Throwable) {
+            $this->hasParentChildTable = false;
+        }
+        return $this->hasParentChildTable;
     }
 }

@@ -115,11 +115,15 @@ final class MemberController extends BaseController
     {
         $items = $this->people->all(500);
         $povId = current_pov_id();
+        $useTa = ((string)($_SESSION['lang'] ?? 'en') === 'ta');
         foreach ($items as &$item) {
             $item['age'] = $this->calculateAge($item);
-            $item['relationship_status'] = $povId > 0
-                ? (string)($this->engine->resolve($povId, (int)$item['person_id'])['title_en'] ?? 'Unknown')
-                : '-';
+            if ($povId > 0) {
+                $rel = $this->engine->resolve($povId, (int)$item['person_id']);
+                $item['relationship_status'] = (string)($useTa ? ($rel['title_ta'] ?? $rel['title_en'] ?? 'Unknown') : ($rel['title_en'] ?? 'Unknown'));
+            } else {
+                $item['relationship_status'] = '-';
+            }
             $item['marital_status'] = ((int)($item['spouse_id'] ?? 0) > 0) ? 'Married/Linked' : 'Single/Unknown';
         }
         unset($item);
@@ -724,12 +728,13 @@ final class MemberController extends BaseController
     private function buildAncestors(int $personId, int $maxDepth): array
     {
         $rows = [];
-        $queue = [['id' => $personId, 'depth' => 0]];
+        $queue = [['id' => $personId, 'depth' => 0, 'first_edge' => 'direct']];
         $seen = [];
         while (!empty($queue)) {
             $node = array_shift($queue);
             $id = (int)$node['id'];
             $depth = (int)$node['depth'];
+            $firstEdge = (string)($node['first_edge'] ?? 'direct');
             if ($depth >= $maxDepth) {
                 continue;
             }
@@ -751,14 +756,16 @@ final class MemberController extends BaseController
                 if ($pp === null) {
                     continue;
                 }
+                $distance = $depth + 1;
+                $childFirstEdge = $depth === 0 ? strtolower((string)$p['link']) : $firstEdge;
                 $rows[] = [
-                    'generation' => $depth + 1,
-                    'link' => $p['link'],
+                    'generation' => $distance,
+                    'link' => $this->ancestorLabel($distance, (string)$pp['gender']),
                     'person_id' => $pid,
                     'name' => (string)$pp['full_name'],
                     'gender' => (string)$pp['gender'],
                 ];
-                $queue[] = ['id' => $pid, 'depth' => $depth + 1];
+                $queue[] = ['id' => $pid, 'depth' => $distance, 'first_edge' => $childFirstEdge];
             }
         }
         return $rows;
@@ -792,5 +799,21 @@ final class MemberController extends BaseController
             }
         }
         return $rows;
+    }
+
+    private function ancestorLabel(int $distance, string $gender): string
+    {
+        $isFemale = ($gender === 'female');
+        if ($distance <= 1) {
+            return $isFemale ? 'Mother' : 'Father';
+        }
+        if ($distance === 2) {
+            return $isFemale ? 'Grandmother' : 'Grandfather';
+        }
+        if ($distance === 3) {
+            return $isFemale ? 'Great Grandmother' : 'Great Grandfather';
+        }
+        $n = $distance - 2;
+        return $n . 'th ' . ($isFemale ? 'Great Grandmother' : 'Great Grandfather');
     }
 }

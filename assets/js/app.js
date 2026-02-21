@@ -82,12 +82,26 @@
         })
           .then(function (res) { return res.json(); })
           .then(function (kids) {
+            if (!Array.isArray(kids)) {
+              kids = [];
+            }
             kids.forEach(function (kid) {
               childrenWrap.appendChild(createNode(kid, level + 1));
             });
             childrenWrap.dataset.loaded = '1';
+            childrenWrap.hidden = kids.length === 0;
+            if (kids.length === 0) {
+              toggle.textContent = '.';
+              toggle.disabled = true;
+            } else {
+              toggle.textContent = '-';
+            }
+          })
+          .catch(function () {
+            childrenWrap.dataset.loaded = '1';
             childrenWrap.hidden = false;
-            toggle.textContent = '-';
+            childrenWrap.innerHTML = '<div class="text-danger small">Failed to load children.</div>';
+            toggle.textContent = '!';
           });
       } else {
         childrenWrap.hidden = !childrenWrap.hidden;
