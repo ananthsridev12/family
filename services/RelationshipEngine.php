@@ -155,30 +155,30 @@ final class RelationshipEngine
 
         // Exact sibling's spouse mapping should take priority over generic in-law titles.
         if ($this->isSpouseOfSiblingByGender($aid, $bid, 'male')) {
-            return $this->fromKey('brothers_wife_safe', null, null, 0, 'In-Law', null);
+            return $this->fromPreferredKey(['brothers_wife_safe', 'sister_in_law'], null, null, 0, 'In-Law', null);
         }
         if ($this->isSpouseOfSiblingByGender($aid, $bid, 'female')) {
-            return $this->fromKey('sisters_husband_safe', null, null, 0, 'In-Law', null);
+            return $this->fromPreferredKey(['sisters_husband_safe', 'brother_in_law'], null, null, 0, 'In-Law', null);
         }
 
         // Co-sister (brothers' wives): both female, each is spouse of male siblings.
         if ($this->isCoSisterBrothersWives($aid, $bid)) {
-            return $this->fromKey('co_sister_brothers_wives', null, null, 0, 'In-Law', null);
+            return $this->fromPreferredKey(['co_sister_brothers_wives', 'sister_in_law'], null, null, 0, 'In-Law', null);
         }
 
         // Brother's wife -> sister (A is brother's wife, B is husband's sister).
         if ($this->isHusbandsSisterFromBrothersWife($aid, $bid)) {
-            return $this->fromKey('husbands_sister_safe', null, null, 0, 'In-Law', null);
+            return $this->fromPreferredKey(['husbands_sister_safe', 'sister_in_law'], null, null, 0, 'In-Law', null);
         }
 
         // Sister -> brother's wife.
         if ($this->isBrothersWifeFromSister($aid, $bid)) {
-            return $this->fromKey('brothers_wife_safe', null, null, 0, 'In-Law', null);
+            return $this->fromPreferredKey(['brothers_wife_safe', 'sister_in_law'], null, null, 0, 'In-Law', null);
         }
 
         // Sibling -> sister's husband.
         if ($this->isSistersHusband($aid, $bid)) {
-            return $this->fromKey('sisters_husband_safe', null, null, 0, 'In-Law', null);
+            return $this->fromPreferredKey(['sisters_husband_safe', 'brother_in_law'], null, null, 0, 'In-Law', null);
         }
 
         if ($spouseId > 0 && $this->isMutualSpouse($aid, $spouseId)) {
@@ -1001,6 +1001,30 @@ final class RelationshipEngine
             $key,
             $connectionDepth
         );
+    }
+
+    private function fromPreferredKey(
+        array $keys,
+        ?int $cousinLevel,
+        ?int $removed,
+        int $generationDifference,
+        string $side,
+        ?int $lcaId,
+        int $connectionDepth = 1
+    ): array {
+        foreach ($keys as $candidate) {
+            if ($this->hasDictionaryKey((string)$candidate)) {
+                return $this->fromKey((string)$candidate, $cousinLevel, $removed, $generationDifference, $side, $lcaId, $connectionDepth);
+            }
+        }
+        $fallback = (string)($keys[0] ?? 'relative');
+        return $this->fromKey($fallback, $cousinLevel, $removed, $generationDifference, $side, $lcaId, $connectionDepth);
+    }
+
+    private function hasDictionaryKey(string $key): bool
+    {
+        $this->loadDictionary();
+        return isset($this->dictionary[$key]);
     }
 
     private function normalizeDisplayTitle(string $titleEn, string $titleTa, int $generationDifference, ?string $key): array
