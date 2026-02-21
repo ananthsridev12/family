@@ -153,6 +153,14 @@ final class RelationshipEngine
             }
         }
 
+        // Exact sibling's spouse mapping should take priority over generic in-law titles.
+        if ($this->isSpouseOfSiblingByGender($aid, $bid, 'male')) {
+            return $this->fromKey('brothers_wife_safe', null, null, 0, 'In-Law', null);
+        }
+        if ($this->isSpouseOfSiblingByGender($aid, $bid, 'female')) {
+            return $this->fromKey('sisters_husband_safe', null, null, 0, 'In-Law', null);
+        }
+
         // Co-sister (brothers' wives): both female, each is spouse of male siblings.
         if ($this->isCoSisterBrothersWives($aid, $bid)) {
             return $this->fromKey('co_sister_brothers_wives', null, null, 0, 'In-Law', null);
@@ -516,6 +524,21 @@ final class RelationshipEngine
             }
         }
         return false;
+    }
+
+    private function isSpouseOfSiblingByGender(int $aid, int $bid, string $siblingGender): bool
+    {
+        if (!isset($this->people[$aid], $this->people[$bid])) {
+            return false;
+        }
+        $bSpouseId = $this->mutualSpouseId($bid);
+        if ($bSpouseId <= 0 || !isset($this->people[$bSpouseId])) {
+            return false;
+        }
+        if ((string)$this->people[$bSpouseId]['gender'] !== $siblingGender) {
+            return false;
+        }
+        return $this->isSibling($aid, $bSpouseId);
     }
 
     private function nephewNieceKeyByContext(int $aid, int $bid, string $targetGender): string
