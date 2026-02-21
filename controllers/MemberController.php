@@ -128,17 +128,47 @@ final class MemberController extends BaseController
 
     public function treeView(): void
     {
-        $this->render('member/tree_view', ['title' => 'Tree View']);
+        $rootId = (int)($_GET['person_id'] ?? current_pov_id());
+        $root = $rootId > 0 ? $this->people->findById($rootId) : null;
+        $this->render('member/tree_view', [
+            'title' => 'Tree View',
+            'root_id' => $rootId,
+            'root_name' => (string)($root['full_name'] ?? ''),
+        ]);
     }
 
     public function ancestors(): void
     {
-        $this->render('member/ancestors', ['title' => 'Ancestors']);
+        $personId = (int)($_GET['person_id'] ?? current_pov_id());
+        $person = $personId > 0 ? $this->people->findById($personId) : null;
+        $rows = [];
+        if ($person !== null) {
+            $rows = $this->buildAncestors($personId, 6);
+        }
+        $this->render('member/ancestors', [
+            'title' => 'Ancestors',
+            'route_prefix' => 'member',
+            'person_id' => $personId,
+            'person_name' => (string)($person['full_name'] ?? ''),
+            'rows' => $rows,
+        ]);
     }
 
     public function descendants(): void
     {
-        $this->render('member/descendants', ['title' => 'Descendants']);
+        $personId = (int)($_GET['person_id'] ?? current_pov_id());
+        $person = $personId > 0 ? $this->people->findById($personId) : null;
+        $rows = [];
+        if ($person !== null) {
+            $rows = $this->buildDescendants($personId, 6);
+        }
+        $this->render('member/descendants', [
+            'title' => 'Descendants',
+            'route_prefix' => 'member',
+            'person_id' => $personId,
+            'person_name' => (string)($person['full_name'] ?? ''),
+            'rows' => $rows,
+        ]);
     }
 
     public function relationshipFinder(): void
@@ -169,7 +199,7 @@ final class MemberController extends BaseController
             'person_b_id' => $personBId,
             'person_a_name' => (string)($personA['full_name'] ?? ''),
             'person_b_name' => (string)($personB['full_name'] ?? ''),
-            'lang' => (string)($_GET['lang'] ?? 'en'),
+            'lang' => (string)($_GET['lang'] ?? ($_SESSION['lang'] ?? 'en')),
         ]);
     }
 
@@ -186,7 +216,23 @@ final class MemberController extends BaseController
 
     public function settings(): void
     {
-        $this->render('member/settings', ['title' => 'Settings']);
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $lang = (string)($_POST['lang'] ?? 'en');
+            if (!in_array($lang, ['en', 'ta'], true)) {
+                $lang = 'en';
+            }
+            $_SESSION['lang'] = $lang;
+            $_SESSION['flash_success'] = 'Language updated.';
+            header('Location: /index.php?route=member/settings');
+            exit;
+        }
+
+        $this->render('member/settings', [
+            'title' => 'Settings',
+            'lang' => (string)($_SESSION['lang'] ?? 'en'),
+            'success' => $_SESSION['flash_success'] ?? null,
+        ]);
+        unset($_SESSION['flash_success']);
     }
 
     private function createPersonFromMember(): void
@@ -673,5 +719,78 @@ final class MemberController extends BaseController
             ':anchor' => $anchorId,
             ':spouse2' => $spouseId,
         ]);
+    }
+
+    private function buildAncestors(int $personId, int $maxDepth): array
+    {
+        $rows = [];
+        $queue = [['id' => $personId, 'depth' => 0]];
+        $seen = [];
+        while (!empty($queue)) {
+            $node = array_shift($queue);
+            $id = (int)$node['id'];
+            $depth = (int)$node['depth'];
+            if ($depth >= $maxDepth) {
+                continue;
+            }
+            $person = $this->people->findById($id);
+            if ($person === null) {
+                continue;
+            }
+            $parents = [
+                ['id' => (int)($person['father_id'] ?? 0), 'link' => 'Father'],
+                ['id' => (int)($person['mother_id'] ?? 0), 'link' => 'Mother'],
+            ];
+            foreach ($parents as $p) {
+                $pid = (int)$p['id'];
+                if ($pid <= 0 || isset($seen[$pid])) {
+                    continue;
+                }
+                $seen[$pid] = true;
+                $pp = $this->people->findById($pid);
+                if ($pp === null) {
+                    continue;
+                }
+                $rows[] = [
+                    'generation' => $depth + 1,
+                    'link' => $p['link'],
+                    'person_id' => $pid,
+                    'name' => (string)$pp['full_name'],
+                    'gender' => (string)$pp['gender'],
+                ];
+                $queue[] = ['id' => $pid, 'depth' => $depth + 1];
+            }
+        }
+        return $rows;
+    }
+
+    private function buildDescendants(int $personId, int $maxDepth): array
+    {
+        $rows = [];
+        $queue = [['id' => $personId, 'depth' => 0]];
+        while (!empty($queue)) {
+            $node = array_shift($queue);
+            $id = (int)$node['id'];
+            $depth = (int)$node['depth'];
+            if ($depth >= $maxDepth) {
+                continue;
+            }
+            $children = $this->people->childrenOf($id);
+            foreach ($children as $child) {
+                $cid = (int)$child['person_id'];
+                $cp = $this->people->findById($cid);
+                if ($cp === null) {
+                    continue;
+                }
+                $rows[] = [
+                    'generation' => $depth + 1,
+                    'person_id' => $cid,
+                    'name' => (string)$cp['full_name'],
+                    'gender' => (string)$cp['gender'],
+                ];
+                $queue[] = ['id' => $cid, 'depth' => $depth + 1];
+            }
+        }
+        return $rows;
     }
 }

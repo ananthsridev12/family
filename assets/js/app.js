@@ -107,6 +107,7 @@
     var rootInput = document.getElementById('treeRootId');
     var button = document.getElementById('loadTreeBtn');
     var container = document.getElementById('treeContainer');
+    var rootDisplay = document.getElementById('treeRootDisplay');
     if (!rootInput || !button || !container) {
       return;
     }
@@ -117,9 +118,13 @@
       if (!rootId) {
         return;
       }
-      var root = { id: rootId, name: 'Selected Person' };
+      var root = { id: rootId, name: (rootDisplay && rootDisplay.value.trim()) ? rootDisplay.value.trim() : 'Selected Person' };
       container.appendChild(createNode(root, 0));
     });
+
+    if (rootInput.value && rootInput.value.trim() !== '') {
+      button.click();
+    }
   }
 
   document.querySelectorAll('.person-search').forEach(bindPersonSearch);

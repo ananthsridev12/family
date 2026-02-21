@@ -1,1 +1,1 @@
-<?php $text = 'Ancestor traversal up to six generations.'; include __DIR__ . '/_simple.php'; ?>
+<?php include __DIR__ . '/../member/ancestors.php'; ?>

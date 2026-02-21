@@ -19,4 +19,16 @@ final class BranchModel
                 ORDER BY b.branch_name ASC';
         return $this->db->query($sql)->fetchAll();
     }
+
+    public function create(string $name): void
+    {
+        $stmt = $this->db->prepare('INSERT INTO branches (branch_name) VALUES (:name)');
+        $stmt->execute([':name' => $name]);
+    }
+
+    public function update(int $id, string $name): void
+    {
+        $stmt = $this->db->prepare('UPDATE branches SET branch_name = :name WHERE branch_id = :id');
+        $stmt->execute([':name' => $name, ':id' => $id]);
+    }
 }
