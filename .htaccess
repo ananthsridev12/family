@@ -12,4 +12,4 @@ RewriteRule ^tamil-relationship-system/?$ index.php?route=tamil-relationship-sys
 RewriteRule ^contact/?$ index.php?route=contact [QSA,L]
 
 RewriteRule ^admin/(dashboard|add-person|family-list|tree-view|ancestors|descendants|relationship-finder|branches|reports|settings)/?$ index.php?route=admin/$1 [QSA,L]
-RewriteRule ^member/(dashboard|add-person|family-list|tree-view|ancestors|descendants|relationship-finder|branches|reports|settings)/?$ index.php?route=member/$1 [QSA,L]
+RewriteRule ^member/(dashboard|add-person|edit-person|add-marriage|person-search|family-list|tree-view|ancestors|descendants|relationship-finder|branches|reports|settings)/?$ index.php?route=member/$1 [QSA,L]

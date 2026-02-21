@@ -27,6 +27,9 @@ final class PersonController extends BaseController
             $out[] = [
                 'id' => (int)$row['person_id'],
                 'name' => $label,
+                'person_id' => (int)$row['person_id'],
+                'full_name' => (string)$row['full_name'],
+                'display_name' => $label,
             ];
         }
 

@@ -37,6 +37,19 @@ function app_user(): array
     return $_SESSION['user'] ?? [];
 }
 
+function csrf_token(): string
+{
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return (string)$_SESSION['csrf_token'];
+}
+
+function verify_csrf(string $token): bool
+{
+    return isset($_SESSION['csrf_token']) && hash_equals((string)$_SESSION['csrf_token'], $token);
+}
+
 function require_auth(): void
 {
     if (empty(app_user())) {
@@ -154,6 +167,18 @@ switch ($route) {
     case 'member/add-person':
         require_role('member');
         $memberController->addPerson();
+        break;
+    case 'member/edit-person':
+        require_role('member');
+        $memberController->editPerson();
+        break;
+    case 'member/add-marriage':
+        require_role('member');
+        $memberController->addMarriage();
+        break;
+    case 'member/person-search':
+        require_role('member');
+        $personController->search();
         break;
     case 'member/family-list':
         require_role('member');

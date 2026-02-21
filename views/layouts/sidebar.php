@@ -8,6 +8,9 @@
     <ul class="nav flex-column">
       <li class="nav-item"><a class="nav-link" href="/index.php?route=<?= $role ?>/dashboard">Dashboard</a></li>
       <li class="nav-item"><a class="nav-link" href="/index.php?route=<?= $role ?>/add-person">Add Person</a></li>
+      <?php if ($role === 'member'): ?>
+      <li class="nav-item"><a class="nav-link" href="/index.php?route=member/add-marriage">Add Marriage</a></li>
+      <?php endif; ?>
       <li class="nav-item"><a class="nav-link" href="/index.php?route=<?= $role ?>/family-list">Family List</a></li>
       <li class="nav-item"><a class="nav-link" href="/index.php?route=<?= $role ?>/tree-view">Tree View</a></li>
       <li class="nav-item"><a class="nav-link" href="/index.php?route=<?= $role ?>/ancestors">Ancestors</a></li>
