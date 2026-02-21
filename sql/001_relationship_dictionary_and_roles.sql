@@ -45,6 +45,10 @@ VALUES
 ('wife','Wife','மனைவி','direct','Direct',0,1,'female',NULL,NULL),
 ('brother','Brother','சகோதரர்','sibling','Direct',0,1,'male',NULL,NULL),
 ('sister','Sister','சகோதரி','sibling','Direct',0,1,'female',NULL,NULL),
+('elder_brother','Elder Brother','அண்ணன்','sibling','Direct',0,1,'male',NULL,NULL),
+('younger_brother','Younger Brother','தம்பி','sibling','Direct',0,1,'male',NULL,NULL),
+('elder_sister','Elder Sister','அக்கா','sibling','Direct',0,1,'female',NULL,NULL),
+('younger_sister','Younger Sister','தங்கை','sibling','Direct',0,1,'female',NULL,NULL),
 ('nephew','Nephew','மருமகன்','extended','Any',1,2,'male',NULL,NULL),
 ('niece','Niece','மருமகள்','extended','Any',1,2,'female',NULL,NULL),
 
@@ -70,10 +74,14 @@ VALUES
 
 ('father_in_law','Father-in-law','மாமனார்','inlaw','In-Law',-1,2,'male',NULL,NULL),
 ('mother_in_law','Mother-in-law','மாமியார்','inlaw','In-Law',-1,2,'female',NULL,NULL),
+('son_in_law','Son-in-law','மாப்பிள்ளை','inlaw','In-Law',1,2,'male',NULL,NULL),
+('daughter_in_law','Daughter-in-law','மருமகள்','inlaw','In-Law',1,2,'female',NULL,NULL),
 ('brother_in_law','Brother-in-law','மச்சான்','inlaw','In-Law',0,2,'male',NULL,NULL),
 ('sister_in_law','Sister-in-law','மைத்துனி','inlaw','In-Law',0,2,'female',NULL,NULL),
-('co_sister','Co-sister','Sakkalathi','inlaw','In-Law',0,2,'female',NULL,NULL),
-('anni','Anni (Elder brother''s wife)','Anni','inlaw','In-Law',0,2,'female',NULL,NULL)
+('macchini','Sister-in-law / Female Cousin','மச்சினி','inlaw','In-Law',0,2,'female',NULL,NULL),
+('nathanar','Husband''s Sister','நாத்தனார்','inlaw','In-Law',0,2,'female',NULL,NULL),
+('co_sister','Co-sister','சக்களத்தி','inlaw','In-Law',0,2,'female',NULL,NULL),
+('anni','Anni (Elder brother''s wife)','அண்ணி','inlaw','In-Law',0,2,'female',NULL,NULL)
 ON DUPLICATE KEY UPDATE
 title_en = VALUES(title_en),
 title_ta = VALUES(title_ta),

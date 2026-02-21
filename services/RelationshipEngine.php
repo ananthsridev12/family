@@ -52,29 +52,15 @@ final class RelationshipEngine
         $side = $this->sideFromEdge($lca['first_edge_a']);
 
         if ($x === 0 && $y > 0) {
-            return $this->fromKey(
-                $this->descendantKey((string)$b['gender'], $y),
-                null,
-                null,
-                $generationDifference,
-                $side,
-                $lca['lca_id']
-            );
+            return $this->descendantResult((string)$b['gender'], $y, $generationDifference, $side, $lca['lca_id']);
         }
 
         if ($y === 0 && $x > 0) {
-            return $this->fromKey(
-                $this->ancestorKey((string)$b['gender'], $x, $side),
-                null,
-                null,
-                $generationDifference,
-                $side,
-                $lca['lca_id']
-            );
+            return $this->ancestorResult((string)$b['gender'], $x, $side, $generationDifference, $lca['lca_id']);
         }
 
         if ($x === 1 && $y === 1) {
-            $key = ((string)$b['gender'] === 'female') ? 'sister' : 'brother';
+            $key = $this->siblingKeyByAge($personAId, $personBId, (string)$b['gender']);
             return $this->fromKey($key, null, null, 0, $side, $lca['lca_id']);
         }
 
@@ -84,6 +70,11 @@ final class RelationshipEngine
 
         if ($x === 2 && $y === 1) {
             $key = ((string)$b['gender'] === 'female') ? 'niece' : 'nephew';
+            return $this->fromKey($key, null, null, $generationDifference, $side, $lca['lca_id']);
+        }
+
+        if ($cousinLevel === 1 && $removed === 0) {
+            $key = ((string)$b['gender'] === 'female') ? 'macchini' : 'machan';
             return $this->fromKey($key, null, null, $generationDifference, $side, $lca['lca_id']);
         }
 
@@ -126,7 +117,7 @@ final class RelationshipEngine
         }
 
         if ($this->isSibling($aid, $bid)) {
-            $key = ((string)$b['gender'] === 'female') ? 'sister' : 'brother';
+            $key = $this->siblingKeyByAge($aid, $bid, (string)$b['gender']);
             return $this->fromKey($key, null, null, 0, 'Direct', null);
         }
 
@@ -161,14 +152,16 @@ final class RelationshipEngine
                     return $this->fromKey('mother_in_law', null, null, -1, 'In-Law', $bid);
                 }
                 if ($this->isSibling($spouseId, $bid)) {
-                    $key = ((string)$b['gender'] === 'female') ? 'sister_in_law' : 'brother_in_law';
+                    $key = $this->spouseSiblingKey((string)$a['gender'], (string)$b['gender']);
                     return $this->fromKey($key, null, null, 0, 'In-Law', null);
                 }
 
                 // Spouse's sibling's spouse is also in-law.
                 if ((int)$b['spouse_id'] > 0 && $this->isMutualSpouse($bid, (int)$b['spouse_id'])) {
                     if ($this->isSibling($spouseId, (int)$b['spouse_id'])) {
-                        $key = ((string)$b['gender'] === 'female') ? 'sister_in_law' : 'brother_in_law';
+                        $key = ((string)$b['gender'] === 'female')
+                            ? $this->sisterInLawKeyForSiblingSpouse($aid, $bid, (int)$b['spouse_id'])
+                            : 'brother_in_law';
                         return $this->fromKey($key, null, null, 0, 'In-Law', null);
                     }
                 }
@@ -211,15 +204,7 @@ final class RelationshipEngine
             $bSpouseId = (int)$b['spouse_id'];
             if ($this->isParentOf($aid, $bSpouseId)) {
                 $isFemale = ((string)$b['gender'] === 'female');
-                return $this->buildResult(
-                    $isFemale ? 'Daughter-in-law' : 'Son-in-law',
-                    $isFemale ? 'மருமகள்' : 'மருமகன்',
-                    null,
-                    null,
-                    1,
-                    'In-Law',
-                    null
-                );
+                return $this->fromKey($isFemale ? 'daughter_in_law' : 'son_in_law', null, null, 1, 'In-Law', null);
             }
         }
 
@@ -368,6 +353,46 @@ final class RelationshipEngine
         return $this->isOlderByBirthData($siblingId, $aid) ? 'anni' : 'sister_in_law';
     }
 
+    private function spouseSiblingKey(string $speakerGender, string $targetGender): string
+    {
+        if ($targetGender === 'male') {
+            return 'machan';
+        }
+        if ($targetGender === 'female') {
+            if ($speakerGender === 'male') {
+                return 'macchini';
+            }
+            if ($speakerGender === 'female') {
+                return 'nathanar';
+            }
+            return 'sister_in_law';
+        }
+        return 'relative';
+    }
+
+    private function siblingKeyByAge(int $aid, int $bid, string $targetGender): string
+    {
+        if ($targetGender === 'male') {
+            if ($this->isOlderByBirthData($bid, $aid)) {
+                return 'elder_brother';
+            }
+            if ($this->isOlderByBirthData($aid, $bid)) {
+                return 'younger_brother';
+            }
+            return 'brother';
+        }
+        if ($targetGender === 'female') {
+            if ($this->isOlderByBirthData($bid, $aid)) {
+                return 'elder_sister';
+            }
+            if ($this->isOlderByBirthData($aid, $bid)) {
+                return 'younger_sister';
+            }
+            return 'sister';
+        }
+        return 'relative';
+    }
+
     private function isOlderByBirthData(int $leftId, int $rightId): bool
     {
         $left = $this->people[$leftId] ?? null;
@@ -436,6 +461,74 @@ final class RelationshipEngine
             return $gender === 'female' ? 'granddaughter' : 'grandson';
         }
         return 'descendant';
+    }
+
+    private function ancestorResult(string $gender, int $distance, string $side, int $generationDifference, ?int $lcaId): array
+    {
+        if ($distance <= 2) {
+            return $this->fromKey($this->ancestorKey($gender, $distance, $side), null, null, $generationDifference, $side, $lcaId);
+        }
+        if ($distance === 3) {
+            return $this->buildResult(
+                $gender === 'female' ? 'Great Grandmother' : 'Great Grandfather',
+                $gender === 'female' ? 'பெரிய பாட்டி' : 'பெரிய தாத்தா',
+                null,
+                null,
+                $generationDifference,
+                $side,
+                $lcaId
+            );
+        }
+        if ($distance === 4) {
+            return $this->buildResult(
+                $gender === 'female' ? 'Great Great Grandmother' : 'Great Great Grandfather',
+                $gender === 'female' ? 'முதுமுதுப் பாட்டி' : 'முதுமுதுத் தாத்தா',
+                null,
+                null,
+                $generationDifference,
+                $side,
+                $lcaId
+            );
+        }
+        return $this->buildResult(
+            ($distance - 2) . 'th Great ' . ($gender === 'female' ? 'Grandmother' : 'Grandfather'),
+            'மூதாதையர்',
+            null,
+            null,
+            $generationDifference,
+            $side,
+            $lcaId
+        );
+    }
+
+    private function descendantResult(string $gender, int $distance, int $generationDifference, string $side, ?int $lcaId): array
+    {
+        if ($distance <= 2) {
+            return $this->fromKey($this->descendantKey($gender, $distance), null, null, $generationDifference, $side, $lcaId);
+        }
+        if ($distance === 3) {
+            return $this->buildResult(
+                $gender === 'female' ? 'Great Granddaughter' : 'Great Grandson',
+                $gender === 'female' ? 'பேரப்பேத்தி' : 'பேரப்பேரன்',
+                null,
+                null,
+                $generationDifference,
+                $side,
+                $lcaId
+            );
+        }
+        if ($distance === 4) {
+            return $this->buildResult(
+                $gender === 'female' ? 'Great Great Granddaughter' : 'Great Great Grandson',
+                $gender === 'female' ? 'கொள்ளுப்பேத்தி' : 'கொள்ளுப்பேரன்',
+                null,
+                null,
+                $generationDifference,
+                $side,
+                $lcaId
+            );
+        }
+        return $this->fromKey('descendant', null, null, $generationDifference, $side, $lcaId);
     }
 
     private function uncleAuntKey(string $gender, string $side): string
@@ -568,3 +661,4 @@ final class RelationshipEngine
         );
     }
 }
+
