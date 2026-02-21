@@ -34,63 +34,61 @@ final class RelationshipEngine
             return $direct;
         }
 
+        $lca = $this->findLowestCommonAncestor($personAId, $personBId);
+        if ($lca !== null) {
+            $x = $lca['distance_a'];
+            $y = $lca['distance_b'];
+            $cousinLevel = min($x, $y) - 1;
+            $removed = abs($x - $y);
+            $generationDifference = $y - $x;
+            $side = $this->sideFromEdge($lca['first_edge_a']);
+
+            if ($x === 0 && $y > 0) {
+                return $this->descendantResult((string)$b['gender'], $y, $generationDifference, $side, $lca['lca_id']);
+            }
+
+            if ($y === 0 && $x > 0) {
+                return $this->ancestorResult((string)$b['gender'], $x, $side, $generationDifference, $lca['lca_id']);
+            }
+
+            if ($x === 1 && $y === 1) {
+                $key = $this->siblingKeyByAge($personAId, $personBId, (string)$b['gender']);
+                return $this->fromKey($key, null, null, 0, $side, $lca['lca_id']);
+            }
+
+            if ($x === 1 && $y === 2) {
+                return $this->fromKey($this->uncleAuntKey((string)$b['gender'], $side), null, null, $generationDifference, $side, $lca['lca_id']);
+            }
+
+            if ($x === 2 && $y === 1) {
+                $key = ((string)$b['gender'] === 'female') ? 'niece' : 'nephew';
+                return $this->fromKey($key, null, null, $generationDifference, $side, $lca['lca_id']);
+            }
+
+            if ($cousinLevel === 1 && $removed === 0) {
+                $key = ((string)$b['gender'] === 'female') ? 'first_cousin_female' : 'first_cousin_male';
+                return $this->fromKey($key, null, null, $generationDifference, $side, $lca['lca_id']);
+            }
+
+            if ($cousinLevel >= 1) {
+                return $this->buildResult(
+                    $this->cousinTitleEn($cousinLevel, $removed),
+                    $this->cousinTitleTa($cousinLevel, $removed),
+                    $cousinLevel,
+                    $removed,
+                    $generationDifference,
+                    $side,
+                    $lca['lca_id']
+                );
+            }
+        }
+
         $inLaw = $this->resolveInLaw($a, $b);
         if ($inLaw !== null) {
             return $inLaw;
         }
 
-        $lca = $this->findLowestCommonAncestor($personAId, $personBId);
-        if ($lca === null) {
-            return $this->fromKey('no_blood_relation', null, null, 0, 'Direct', null);
-        }
-
-        $x = $lca['distance_a'];
-        $y = $lca['distance_b'];
-        $cousinLevel = min($x, $y) - 1;
-        $removed = abs($x - $y);
-        $generationDifference = $y - $x;
-        $side = $this->sideFromEdge($lca['first_edge_a']);
-
-        if ($x === 0 && $y > 0) {
-            return $this->descendantResult((string)$b['gender'], $y, $generationDifference, $side, $lca['lca_id']);
-        }
-
-        if ($y === 0 && $x > 0) {
-            return $this->ancestorResult((string)$b['gender'], $x, $side, $generationDifference, $lca['lca_id']);
-        }
-
-        if ($x === 1 && $y === 1) {
-            $key = $this->siblingKeyByAge($personAId, $personBId, (string)$b['gender']);
-            return $this->fromKey($key, null, null, 0, $side, $lca['lca_id']);
-        }
-
-        if ($x === 1 && $y === 2) {
-            return $this->fromKey($this->uncleAuntKey((string)$b['gender'], $side), null, null, $generationDifference, $side, $lca['lca_id']);
-        }
-
-        if ($x === 2 && $y === 1) {
-            $key = ((string)$b['gender'] === 'female') ? 'niece' : 'nephew';
-            return $this->fromKey($key, null, null, $generationDifference, $side, $lca['lca_id']);
-        }
-
-        if ($cousinLevel === 1 && $removed === 0) {
-            $key = ((string)$b['gender'] === 'female') ? 'macchini' : 'machan';
-            return $this->fromKey($key, null, null, $generationDifference, $side, $lca['lca_id']);
-        }
-
-        if ($cousinLevel >= 1) {
-            return $this->buildResult(
-                $this->cousinTitleEn($cousinLevel, $removed),
-                $this->cousinTitleTa($cousinLevel, $removed),
-                $cousinLevel,
-                $removed,
-                $generationDifference,
-                $side,
-                $lca['lca_id']
-            );
-        }
-
-        return $this->fromKey('relative', null, null, $generationDifference, $side, $lca['lca_id']);
+        return $this->fromKey('no_blood_relation', null, null, 0, 'Direct', null);
     }
 
     private function resolveDirect(array $a, array $b): ?array
@@ -356,15 +354,9 @@ final class RelationshipEngine
     private function spouseSiblingKey(string $speakerGender, string $targetGender): string
     {
         if ($targetGender === 'male') {
-            return 'machan';
+            return 'brother_in_law';
         }
         if ($targetGender === 'female') {
-            if ($speakerGender === 'male') {
-                return 'macchini';
-            }
-            if ($speakerGender === 'female') {
-                return 'nathanar';
-            }
             return 'sister_in_law';
         }
         return 'relative';
@@ -550,9 +542,17 @@ final class RelationshipEngine
 
     private function cousinTitleTa(int $level, int $removed): string
     {
-        $base = $level . '-am nilai uravu';
+        if ($level === 1) {
+            $base = 'முதல் தலைமுறை உறவு';
+        } elseif ($level === 2) {
+            $base = 'இரண்டாம் தலைமுறை உறவு';
+        } elseif ($level === 3) {
+            $base = 'மூன்றாம் தலைமுறை உறவு';
+        } else {
+            $base = $level . 'ஆம் தலைமுறை உறவு';
+        }
         if ($removed > 0) {
-            $base .= ' (' . $removed . ' thalaimurai vilagal)';
+            return 'மாற்றுத் தலைமுறை உறவு';
         }
         return $base;
     }
