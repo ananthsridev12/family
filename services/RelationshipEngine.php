@@ -7,6 +7,7 @@ final class RelationshipEngine
     private array $people = [];
     private array $ancestorCache = [];
     private array $dictionary = [];
+    private array $resolving = [];
 
     public function __construct(PDO $db)
     {
@@ -15,6 +16,13 @@ final class RelationshipEngine
 
     public function resolve(int $personAId, int $personBId): array
     {
+        $pairKey = $personAId . ':' . $personBId;
+        if (isset($this->resolving[$pairKey])) {
+            return $this->fromKey('no_blood_relation', null, null, 0, 'Direct', null);
+        }
+        $this->resolving[$pairKey] = true;
+
+        try {
         $this->loadPeople();
         $this->loadDictionary();
 
@@ -88,7 +96,15 @@ final class RelationshipEngine
             return $inLaw;
         }
 
+        $extendedAffinal = $this->resolveExtendedAffinal($a, $b);
+        if ($extendedAffinal !== null) {
+            return $extendedAffinal;
+        }
+
         return $this->fromKey('no_blood_relation', null, null, 0, 'Direct', null);
+        } finally {
+            unset($this->resolving[$pairKey]);
+        }
     }
 
     private function resolveDirect(array $a, array $b): ?array
@@ -220,6 +236,68 @@ final class RelationshipEngine
         }
 
         return null;
+    }
+
+    private function resolveExtendedAffinal(array $a, array $b): ?array
+    {
+        $aid = (int)$a['person_id'];
+        $bid = (int)$b['person_id'];
+
+        $bSpouseId = $this->mutualSpouseId($bid);
+        if ($bSpouseId > 0 && $bSpouseId !== $aid) {
+            $base = $this->resolve($aid, $bSpouseId);
+            if ($this->isUsableAffinalBase($base)) {
+                return $this->affinalFromBase($base);
+            }
+        }
+
+        $aSpouseId = $this->mutualSpouseId($aid);
+        if ($aSpouseId > 0 && $aSpouseId !== $bid) {
+            $base = $this->resolve($aSpouseId, $bid);
+            if ($this->isUsableAffinalBase($base)) {
+                return $this->affinalFromBase($base);
+            }
+        }
+
+        return null;
+    }
+
+    private function isUsableAffinalBase(array $base): bool
+    {
+        $key = (string)($base['key'] ?? '');
+        if ($key === '' || in_array($key, ['unknown', 'no_blood_relation', 'self', 'husband', 'wife'], true)) {
+            return false;
+        }
+        return true;
+    }
+
+    private function affinalFromBase(array $base): array
+    {
+        $key = (string)($base['key'] ?? '');
+        if (in_array($key, ['son', 'daughter'], true)) {
+            return $this->fromKey($key === 'son' ? 'daughter_in_law' : 'son_in_law', null, null, 1, 'In-Law', null);
+        }
+        if (in_array($key, ['brother', 'sister', 'elder_brother', 'younger_brother', 'elder_sister', 'younger_sister'], true)) {
+            $isFemale = str_contains($key, 'sister');
+            return $this->fromKey($isFemale ? 'sister_in_law' : 'brother_in_law', null, null, 0, 'In-Law', null);
+        }
+
+        $level = $this->affinalLevelFromBase($base);
+        return $this->fromKey('affinal_relative_level_' . $level, null, null, (int)($base['generation_difference'] ?? 0), 'In-Law', null);
+    }
+
+    private function affinalLevelFromBase(array $base): int
+    {
+        $cousinLevel = (int)($base['cousin_level'] ?? 0);
+        $removed = (int)($base['removed'] ?? 0);
+        if ($cousinLevel >= 2 || $removed >= 1) {
+            return 3;
+        }
+        $gd = abs((int)($base['generation_difference'] ?? 0));
+        if ($gd >= 2 || $cousinLevel === 1) {
+            return 2;
+        }
+        return 1;
     }
 
     private function findLowestCommonAncestor(int $aId, int $bId): ?array
@@ -805,9 +883,11 @@ final class RelationshipEngine
         ?int $removed,
         int $generationDifference,
         string $side,
-        ?int $lcaId
+        ?int $lcaId,
+        ?string $key = null
     ): array {
         return [
+            'key' => $key,
             'title_en' => $titleEn,
             'title_ta' => $titleTa,
             'cousin_level' => $cousinLevel,
@@ -828,7 +908,7 @@ final class RelationshipEngine
     ): array {
         $entry = $this->dictionary[$key] ?? null;
         if ($entry === null) {
-            return $this->buildResult($key, $key, $cousinLevel, $removed, $generationDifference, $side, $lcaId);
+            return $this->buildResult($key, $key, $cousinLevel, $removed, $generationDifference, $side, $lcaId, $key);
         }
 
         return $this->buildResult(
@@ -838,7 +918,8 @@ final class RelationshipEngine
             $removed,
             $generationDifference,
             $side,
-            $lcaId
+            $lcaId,
+            $key
         );
     }
 }

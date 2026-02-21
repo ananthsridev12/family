@@ -91,7 +91,10 @@ VALUES
 ('co_sister_brothers_wives','Co-Sister (Brothers'' Wives)','சகோதரரின் மனைவி','inlaw','In-Law',0,2,'female',NULL,NULL),
 ('husbands_sister_safe','Husband''s Sister','கணவனின் சகோதரி','inlaw','In-Law',0,2,'female',NULL,NULL),
 ('brothers_wife_safe','Brother''s Wife','சகோதரரின் மனைவி','inlaw','In-Law',0,2,'female',NULL,NULL),
-('sisters_husband_safe','Sister''s Husband','சகோதரியின் கணவன்','inlaw','In-Law',0,2,'male',NULL,NULL)
+('sisters_husband_safe','Sister''s Husband','சகோதரியின் கணவன்','inlaw','In-Law',0,2,'male',NULL,NULL),
+('affinal_relative_level_1','Affinal Relative (Level 1)','திருமண உறவு (நிலை 1)','inlaw','In-Law',0,NULL,'any',NULL,NULL),
+('affinal_relative_level_2','Affinal Relative (Level 2)','திருமண உறவு (நிலை 2)','inlaw','In-Law',0,NULL,'any',NULL,NULL),
+('affinal_relative_level_3','Affinal Relative (Level 3)','திருமண உறவு (நிலை 3)','inlaw','In-Law',0,NULL,'any',NULL,NULL)
 ON DUPLICATE KEY UPDATE
 title_en = VALUES(title_en),
 title_ta = VALUES(title_ta),
