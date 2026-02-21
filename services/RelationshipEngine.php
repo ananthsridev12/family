@@ -57,12 +57,12 @@ final class RelationshipEngine
             }
 
             if ($x === 1 && $y === 2) {
-                $key = ((string)$b['gender'] === 'female') ? 'niece' : 'nephew';
+                $key = $this->nephewNieceKeyByContext($personAId, $personBId, (string)$b['gender']);
                 return $this->fromKey($key, null, null, $generationDifference, $side, $lca['lca_id']);
             }
 
             if ($x === 2 && $y === 1) {
-                return $this->fromKey($this->uncleAuntKey((string)$b['gender'], $side), null, null, $generationDifference, $side, $lca['lca_id']);
+                return $this->fromKey($this->uncleAuntKeyByContext($personAId, $personBId, (string)$b['gender'], $side), null, null, $generationDifference, $side, $lca['lca_id']);
             }
 
             if ($cousinLevel === 1 && $removed === 0) {
@@ -166,11 +166,19 @@ final class RelationshipEngine
         $fatherId = (int)$a['father_id'];
         $motherId = (int)$a['mother_id'];
         if ($this->isSpouseOfSibling($bid, $fatherId)) {
-            $key = ((string)$b['gender'] === 'female') ? 'paternal_aunt' : 'paternal_uncle';
+            if ((string)$b['gender'] === 'female') {
+                $key = $this->inLawAuntByFatherSide($aid, $bid);
+            } else {
+                $key = 'mama';
+            }
             return $this->fromKey($key, null, null, -1, 'In-Law', null);
         }
         if ($this->isSpouseOfSibling($bid, $motherId)) {
-            $key = ((string)$b['gender'] === 'female') ? 'maternal_aunt' : 'mama';
+            if ((string)$b['gender'] === 'female') {
+                $key = 'mami';
+            } else {
+                $key = 'mama';
+            }
             return $this->fromKey($key, null, null, -1, 'In-Law', null);
         }
 
@@ -309,6 +317,104 @@ final class RelationshipEngine
         }
         $child = $this->people[$childId];
         return (int)$child['father_id'] === $parentId || (int)$child['mother_id'] === $parentId;
+    }
+
+    private function nephewNieceKeyByContext(int $aid, int $bid, string $targetGender): string
+    {
+        $a = $this->people[$aid] ?? null;
+        $b = $this->people[$bid] ?? null;
+        if ($a === null || $b === null) {
+            return $targetGender === 'female' ? 'niece' : 'nephew';
+        }
+
+        $fromBrother = false;
+        $fromSister = false;
+        $fatherId = (int)$b['father_id'];
+        $motherId = (int)$b['mother_id'];
+        if ($fatherId > 0 && $this->isSibling($aid, $fatherId)) {
+            $fromBrother = (($this->people[$fatherId]['gender'] ?? '') === 'male');
+            $fromSister = (($this->people[$fatherId]['gender'] ?? '') === 'female');
+        }
+        if ($motherId > 0 && $this->isSibling($aid, $motherId)) {
+            $fromBrother = $fromBrother || (($this->people[$motherId]['gender'] ?? '') === 'male');
+            $fromSister = $fromSister || (($this->people[$motherId]['gender'] ?? '') === 'female');
+        }
+
+        if ($targetGender === 'female') {
+            if ($fromBrother) {
+                return 'niece_brother_daughter';
+            }
+            if ($fromSister) {
+                return 'niece_sister_daughter';
+            }
+            return 'niece';
+        }
+
+        if ($fromBrother) {
+            return 'nephew_brother_son';
+        }
+        if ($fromSister) {
+            return 'nephew_sister_son';
+        }
+        return 'nephew';
+    }
+
+    private function uncleAuntKeyByContext(int $aid, int $bid, string $gender, string $side): string
+    {
+        if ($gender === 'male') {
+            if ($side === 'Maternal') {
+                return 'mama';
+            }
+            if ($side === 'Paternal') {
+                $a = $this->people[$aid] ?? null;
+                $fatherId = (int)($a['father_id'] ?? 0);
+                if ($fatherId > 0) {
+                    if ($this->isOlderByBirthData($bid, $fatherId)) {
+                        return 'periyappa';
+                    }
+                    if ($this->isOlderByBirthData($fatherId, $bid)) {
+                        return 'chithappa';
+                    }
+                }
+                return 'paternal_uncle';
+            }
+            return 'paternal_uncle';
+        }
+
+        if ($gender === 'female') {
+            if ($side === 'Maternal') {
+                $a = $this->people[$aid] ?? null;
+                $motherId = (int)($a['mother_id'] ?? 0);
+                if ($motherId > 0) {
+                    if ($this->isOlderByBirthData($bid, $motherId)) {
+                        return 'periyamma';
+                    }
+                    if ($this->isOlderByBirthData($motherId, $bid)) {
+                        return 'chithi';
+                    }
+                }
+                return 'maternal_aunt';
+            }
+            return 'athai';
+        }
+
+        return $this->uncleAuntKey($gender, $side);
+    }
+
+    private function inLawAuntByFatherSide(int $aid, int $bid): string
+    {
+        $a = $this->people[$aid] ?? null;
+        $fatherId = (int)($a['father_id'] ?? 0);
+        $bSpouseId = (int)($this->people[$bid]['spouse_id'] ?? 0);
+        if ($fatherId > 0 && $bSpouseId > 0 && $this->isSibling($bSpouseId, $fatherId)) {
+            if ($this->isOlderByBirthData($bSpouseId, $fatherId)) {
+                return 'periyamma';
+            }
+            if ($this->isOlderByBirthData($fatherId, $bSpouseId)) {
+                return 'chithi';
+            }
+        }
+        return 'paternal_aunt';
     }
 
     private function isSpouseOfSibling(int $candidateId, int $personId): bool
