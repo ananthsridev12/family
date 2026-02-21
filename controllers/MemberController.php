@@ -412,6 +412,7 @@ final class MemberController extends BaseController
             $u->execute([':spouse' => $targetId, ':id' => $anchorId]);
             $u->execute([':spouse' => $anchorId, ':id' => $targetId]);
             $this->upsertMarriageByPair($anchorId, $targetId, $spouseMarriageDate);
+            $this->linkMissingOtherParentForChildren($anchorId, $targetId);
             return;
         }
 
@@ -626,6 +627,37 @@ final class MemberController extends BaseController
             ':p2' => $person2Id,
             ':md' => $marriageDate,
             ':status' => 'married',
+        ]);
+    }
+
+    private function linkMissingOtherParentForChildren(int $anchorId, int $spouseId): void
+    {
+        // If anchor is stored as mother for child and father is missing, fill father with spouse.
+        $fillFather = $this->db->prepare(
+            'UPDATE persons
+             SET father_id = :spouse
+             WHERE mother_id = :anchor
+               AND (father_id IS NULL OR father_id = 0)
+               AND person_id <> :spouse2'
+        );
+        $fillFather->execute([
+            ':spouse' => $spouseId,
+            ':anchor' => $anchorId,
+            ':spouse2' => $spouseId,
+        ]);
+
+        // If anchor is stored as father for child and mother is missing, fill mother with spouse.
+        $fillMother = $this->db->prepare(
+            'UPDATE persons
+             SET mother_id = :spouse
+             WHERE father_id = :anchor
+               AND (mother_id IS NULL OR mother_id = 0)
+               AND person_id <> :spouse2'
+        );
+        $fillMother->execute([
+            ':spouse' => $spouseId,
+            ':anchor' => $anchorId,
+            ':spouse2' => $spouseId,
         ]);
     }
 }
