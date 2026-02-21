@@ -57,12 +57,12 @@ final class RelationshipEngine
             }
 
             if ($x === 1 && $y === 2) {
-                return $this->fromKey($this->uncleAuntKey((string)$b['gender'], $side), null, null, $generationDifference, $side, $lca['lca_id']);
+                $key = ((string)$b['gender'] === 'female') ? 'niece' : 'nephew';
+                return $this->fromKey($key, null, null, $generationDifference, $side, $lca['lca_id']);
             }
 
             if ($x === 2 && $y === 1) {
-                $key = ((string)$b['gender'] === 'female') ? 'niece' : 'nephew';
-                return $this->fromKey($key, null, null, $generationDifference, $side, $lca['lca_id']);
+                return $this->fromKey($this->uncleAuntKey((string)$b['gender'], $side), null, null, $generationDifference, $side, $lca['lca_id']);
             }
 
             if ($cousinLevel === 1 && $removed === 0) {
