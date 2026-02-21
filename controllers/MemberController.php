@@ -189,8 +189,14 @@ final class MemberController extends BaseController
         $gender = (string)($_POST['gender'] ?? 'unknown');
         $dateOfBirth = $this->normalizeDate($_POST['date_of_birth'] ?? null);
         $birthYear = $this->normalizeInt($_POST['birth_year'] ?? null);
+        $dateOfDeath = $this->normalizeDate($_POST['date_of_death'] ?? null);
         $currentLocation = $this->nullableString($_POST['current_location'] ?? null);
         $nativeLocation = $this->nullableString($_POST['native_location'] ?? null);
+        $bloodGroup = $this->nullableString($_POST['blood_group'] ?? null);
+        $occupation = $this->nullableString($_POST['occupation'] ?? null);
+        $mobile = $this->nullableString($_POST['mobile'] ?? null);
+        $email = $this->nullableString($_POST['email'] ?? null);
+        $address = $this->nullableString($_POST['address'] ?? null);
         $isAlive = isset($_POST['is_alive']) ? 1 : 0;
         $relationType = (string)($_POST['relation_type'] ?? 'none');
         $parentType = (string)($_POST['parent_type'] ?? 'father');
@@ -227,12 +233,12 @@ final class MemberController extends BaseController
                     ':gender' => $gender,
                     ':date_of_birth' => $dateOfBirth,
                     ':birth_year' => $birthYear,
-                    ':date_of_death' => null,
-                    ':blood_group' => null,
-                    ':occupation' => null,
-                    ':mobile' => null,
-                    ':email' => null,
-                    ':address' => null,
+                    ':date_of_death' => $dateOfDeath,
+                    ':blood_group' => $bloodGroup,
+                    ':occupation' => $occupation,
+                    ':mobile' => $mobile,
+                    ':email' => $email,
+                    ':address' => $address,
                     ':current_location' => $currentLocation,
                     ':native_location' => $nativeLocation,
                     ':is_alive' => $isAlive,
@@ -438,12 +444,23 @@ final class MemberController extends BaseController
 
     private function linkParentChild(int $parentId, int $childId, string $parentType, ?int $birthOrder = null): void
     {
+        $parent = $this->people->findById($parentId);
+        $spouseId = (int)($parent['spouse_id'] ?? 0);
+
         if ($parentType === 'father') {
             $stmt = $this->db->prepare('UPDATE persons SET father_id = :pid WHERE person_id = :cid');
             $stmt->execute([':pid' => $parentId, ':cid' => $childId]);
+            if ($spouseId > 0 && $spouseId !== $childId) {
+                $stmt = $this->db->prepare('UPDATE persons SET mother_id = :mid WHERE person_id = :cid AND (mother_id IS NULL OR mother_id = 0)');
+                $stmt->execute([':mid' => $spouseId, ':cid' => $childId]);
+            }
         } elseif ($parentType === 'mother') {
             $stmt = $this->db->prepare('UPDATE persons SET mother_id = :pid WHERE person_id = :cid');
             $stmt->execute([':pid' => $parentId, ':cid' => $childId]);
+            if ($spouseId > 0 && $spouseId !== $childId) {
+                $stmt = $this->db->prepare('UPDATE persons SET father_id = :fid WHERE person_id = :cid AND (father_id IS NULL OR father_id = 0)');
+                $stmt->execute([':fid' => $spouseId, ':cid' => $childId]);
+            }
         }
 
         if ($birthOrder !== null && $birthOrder > 0) {

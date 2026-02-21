@@ -77,6 +77,11 @@
     </div>
 
     <div class="col-md-3">
+      <label class="form-label">Date of Death</label>
+      <input type="date" name="date_of_death" class="form-control">
+    </div>
+
+    <div class="col-md-3">
       <label class="form-label">Birth Year</label>
       <input type="number" name="birth_year" class="form-control" min="1800" max="2100">
     </div>
@@ -89,6 +94,31 @@
     <div class="col-md-6">
       <label class="form-label">Native Location</label>
       <input type="text" name="native_location" class="form-control">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Blood Group</label>
+      <input type="text" name="blood_group" class="form-control">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Occupation</label>
+      <input type="text" name="occupation" class="form-control">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Mobile</label>
+      <input type="text" name="mobile" class="form-control">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Email</label>
+      <input type="email" name="email" class="form-control">
+    </div>
+
+    <div class="col-12">
+      <label class="form-label">Address</label>
+      <input type="text" name="address" class="form-control">
     </div>
 
     <div class="col-md-3">
