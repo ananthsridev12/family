@@ -1,0 +1,1 @@
+<?php $text = 'Ancestor list (up to six levels).'; include __DIR__ . '/_simple.php'; ?>

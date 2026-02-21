@@ -1,0 +1,1 @@
+<?php $text = 'Members in your visible family graph.'; include __DIR__ . '/_simple.php'; ?>

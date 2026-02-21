@@ -1,0 +1,1 @@
+<?php $text = 'Personal and branch reports.'; include __DIR__ . '/_simple.php'; ?>

@@ -1,0 +1,1 @@
+<?php $text = 'Create people, link father/mother/spouse, and resolve kinship using LCA.'; include __DIR__ . '/../layouts/public_page.php'; ?>

@@ -1,0 +1,1 @@
+<?php $text = 'Contact: admin@familytree.local'; include __DIR__ . '/../layouts/public_page.php'; ?>

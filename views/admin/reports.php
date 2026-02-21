@@ -1,0 +1,1 @@
+<?php $text = 'Operational and lineage reports.'; include __DIR__ . '/_simple.php'; ?>

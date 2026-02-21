@@ -1,0 +1,127 @@
+(function () {
+  function debounce(fn, wait) {
+    var timer = null;
+    return function () {
+      var ctx = this;
+      var args = arguments;
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        fn.apply(ctx, args);
+      }, wait);
+    };
+  }
+
+  function bindPersonSearch(input) {
+    var targetId = input.getAttribute('data-target');
+    var hidden = document.getElementById(targetId);
+    var results = input.parentElement.querySelector('.search-results');
+    if (!hidden || !results) {
+      return;
+    }
+
+    var runSearch = debounce(function () {
+      var q = input.value.trim();
+      results.innerHTML = '';
+      hidden.value = '';
+
+      if (q.length < 2) {
+        return;
+      }
+
+      fetch('/index.php?route=person/search&q=' + encodeURIComponent(q), {
+        headers: { 'Accept': 'application/json' }
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (list) {
+          results.innerHTML = '';
+          list.forEach(function (item) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'list-group-item list-group-item-action';
+            btn.textContent = item.name;
+            btn.addEventListener('click', function () {
+              input.value = item.name;
+              hidden.value = item.id;
+              results.innerHTML = '';
+            });
+            results.appendChild(btn);
+          });
+        })
+        .catch(function () {
+          results.innerHTML = '';
+        });
+    }, 300);
+
+    input.addEventListener('input', runSearch);
+  }
+
+  function createNode(person, level) {
+    var wrap = document.createElement('div');
+    wrap.className = 'tree-node border rounded p-2 mb-2';
+    wrap.style.marginLeft = (level * 14) + 'px';
+
+    var header = document.createElement('div');
+    header.className = 'd-flex align-items-center gap-2';
+
+    var toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'btn btn-sm btn-outline-secondary';
+    toggle.textContent = '+';
+
+    var title = document.createElement('strong');
+    title.textContent = person.name + ' #' + person.id;
+
+    var childrenWrap = document.createElement('div');
+    childrenWrap.className = 'mt-2';
+    childrenWrap.hidden = true;
+
+    toggle.addEventListener('click', function () {
+      if (!childrenWrap.dataset.loaded) {
+        fetch('/index.php?route=person/children&person_id=' + encodeURIComponent(person.id), {
+          headers: { 'Accept': 'application/json' }
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (kids) {
+            kids.forEach(function (kid) {
+              childrenWrap.appendChild(createNode(kid, level + 1));
+            });
+            childrenWrap.dataset.loaded = '1';
+            childrenWrap.hidden = false;
+            toggle.textContent = '-';
+          });
+      } else {
+        childrenWrap.hidden = !childrenWrap.hidden;
+        toggle.textContent = childrenWrap.hidden ? '+' : '-';
+      }
+    });
+
+    header.appendChild(toggle);
+    header.appendChild(title);
+    wrap.appendChild(header);
+    wrap.appendChild(childrenWrap);
+
+    return wrap;
+  }
+
+  function bindTree() {
+    var rootInput = document.getElementById('treeRootId');
+    var button = document.getElementById('loadTreeBtn');
+    var container = document.getElementById('treeContainer');
+    if (!rootInput || !button || !container) {
+      return;
+    }
+
+    button.addEventListener('click', function () {
+      var rootId = rootInput.value.trim();
+      container.innerHTML = '';
+      if (!rootId) {
+        return;
+      }
+      var root = { id: rootId, name: 'Selected Person' };
+      container.appendChild(createNode(root, 0));
+    });
+  }
+
+  document.querySelectorAll('.person-search').forEach(bindPersonSearch);
+  bindTree();
+})();

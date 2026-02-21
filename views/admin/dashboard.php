@@ -1,0 +1,1 @@
+<?php $text = 'Overview and activity shortcuts.'; include __DIR__ . '/_simple.php'; ?>

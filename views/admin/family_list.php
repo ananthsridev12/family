@@ -1,0 +1,1 @@
+<?php $text = 'All persons in the family.'; include __DIR__ . '/_simple.php'; ?>

@@ -1,0 +1,1 @@
+<?php $text = 'FamilyTree 3.0 is a strict parent-spouse based genealogy platform.'; include __DIR__ . '/../layouts/public_page.php'; ?>

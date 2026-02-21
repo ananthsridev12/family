@@ -1,0 +1,1 @@
+<?php $text = 'Tree view, ancestor/descendant pages, relationship finder, and branch reports.'; include __DIR__ . '/../layouts/public_page.php'; ?>

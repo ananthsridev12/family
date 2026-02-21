@@ -1,0 +1,1 @@
+<?php $text = 'Tamil Nadu kinship labels are supported via dictionary-driven mapping.'; include __DIR__ . '/../layouts/public_page.php'; ?>

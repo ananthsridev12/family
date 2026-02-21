@@ -1,0 +1,1 @@
+<?php $text = 'Ancestor traversal up to six generations.'; include __DIR__ . '/_simple.php'; ?>

@@ -1,0 +1,1 @@
+<?php $text = 'Profile and language settings.'; include __DIR__ . '/_simple.php'; ?>
