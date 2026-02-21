@@ -145,6 +145,14 @@ final class RelationshipEngine
         $spouseId = (int)$a['spouse_id'];
         $bSpouseId = (int)$b['spouse_id'];
 
+        // Parent -> child's spouse must resolve first to avoid broader sibling-spouse matches.
+        if ($bSpouseId > 0 && $this->isMutualSpouse($bid, $bSpouseId)) {
+            if ($this->isParentOf($aid, $bSpouseId)) {
+                $isFemale = ((string)$b['gender'] === 'female');
+                return $this->fromKey($isFemale ? 'daughter_in_law' : 'son_in_law', null, null, 1, 'In-Law', null);
+            }
+        }
+
         // Co-sister (brothers' wives): both female, each is spouse of male siblings.
         if ($this->isCoSisterBrothersWives($aid, $bid)) {
             return $this->fromKey('co_sister_brothers_wives', null, null, 0, 'In-Law', null);
@@ -223,15 +231,6 @@ final class RelationshipEngine
             if ($bSpouse !== null && $this->isSibling($aid, (int)$bSpouse['person_id'])) {
                 $key = ((string)$b['gender'] === 'female') ? 'sister_in_law' : 'brother_in_law';
                 return $this->fromKey($key, null, null, 0, 'In-Law', null);
-            }
-        }
-
-        // Parent's child spouse -> son/daughter in-law.
-        if ((int)$b['spouse_id'] > 0 && $this->isMutualSpouse($bid, (int)$b['spouse_id'])) {
-            $bSpouseId = (int)$b['spouse_id'];
-            if ($this->isParentOf($aid, $bSpouseId)) {
-                $isFemale = ((string)$b['gender'] === 'female');
-                return $this->fromKey($isFemale ? 'daughter_in_law' : 'son_in_law', null, null, 1, 'In-Law', null);
             }
         }
 
@@ -668,25 +667,54 @@ final class RelationshipEngine
         if ($left === null || $right === null) {
             return false;
         }
-        $leftY = $this->personComparableYear($left);
-        $rightY = $this->personComparableYear($right);
-        if ($leftY === null || $rightY === null) {
+        $leftBirth = $this->personBirthComparable($left);
+        $rightBirth = $this->personBirthComparable($right);
+        if ($leftBirth === null || $rightBirth === null) {
             return false;
         }
-        return $leftY < $rightY;
+        // First compare year when available from either DOB or birth_year.
+        if ($leftBirth['year'] < $rightBirth['year']) {
+            return true;
+        }
+        if ($leftBirth['year'] > $rightBirth['year']) {
+            return false;
+        }
+
+        // Same year: compare full DOB only when both sides have complete date.
+        if ($leftBirth['has_full_dob'] && $rightBirth['has_full_dob']) {
+            return $leftBirth['date_key'] < $rightBirth['date_key'];
+        }
+
+        // Same year but incomplete date precision: cannot decide elder/younger.
+        return false;
     }
 
-    private function personComparableYear(array $person): ?int
+    private function personBirthComparable(array $person): ?array
     {
         $dob = trim((string)($person['date_of_birth'] ?? ''));
-        if ($dob !== '') {
-            $year = (int)substr($dob, 0, 4);
-            if ($year > 0) {
-                return $year;
+        if ($dob !== '' && preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $dob, $m) === 1) {
+            $year = (int)$m[1];
+            $month = (int)$m[2];
+            $day = (int)$m[3];
+            if ($year > 0 && $month >= 1 && $month <= 12 && $day >= 1 && $day <= 31) {
+                return [
+                    'year' => $year,
+                    'date_key' => $year * 10000 + $month * 100 + $day,
+                    'has_full_dob' => true,
+                ];
             }
         }
+
         $by = (int)($person['birth_year'] ?? 0);
-        return $by > 0 ? $by : null;
+        if ($by > 0) {
+            return [
+                'year' => $by,
+                'date_key' => null,
+                'has_full_dob' => false,
+            ];
+        }
+
+        return null;
     }
 
     private function sideFromEdge(string $firstEdge): string
