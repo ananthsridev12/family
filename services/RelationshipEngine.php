@@ -274,11 +274,11 @@ final class RelationshipEngine
     {
         $key = (string)($base['key'] ?? '');
         if (in_array($key, ['son', 'daughter'], true)) {
-            return $this->fromKey($key === 'son' ? 'daughter_in_law' : 'son_in_law', null, null, 1, 'In-Law', null);
+            return $this->fromKey($key === 'son' ? 'daughter_in_law' : 'son_in_law', null, null, 1, 'In-Law', null, 2);
         }
         if (in_array($key, ['brother', 'sister', 'elder_brother', 'younger_brother', 'elder_sister', 'younger_sister'], true)) {
             $isFemale = str_contains($key, 'sister');
-            return $this->fromKey($isFemale ? 'sister_in_law' : 'brother_in_law', null, null, 0, 'In-Law', null);
+            return $this->fromKey($isFemale ? 'sister_in_law' : 'brother_in_law', null, null, 0, 'In-Law', null, 2);
         }
         $map = [
             'paternal_uncle' => 'mama',
@@ -298,7 +298,7 @@ final class RelationshipEngine
             'niece_sister_daughter' => 'niece_sister_daughter',
         ];
         if (isset($map[$key])) {
-            return $this->fromKey($map[$key], null, null, (int)($base['generation_difference'] ?? 0), 'In-Law', null);
+            return $this->fromKey($map[$key], null, null, (int)($base['generation_difference'] ?? 0), 'In-Law', null, 2);
         }
 
         // Exact deterministic fallback for long-distance affinal relatives.
@@ -312,7 +312,8 @@ final class RelationshipEngine
             (int)($base['generation_difference'] ?? 0),
             'In-Law',
             null,
-            'spouse_of_' . $key
+            'spouse_of_' . $key,
+            2
         );
     }
 
@@ -929,17 +930,26 @@ final class RelationshipEngine
         int $generationDifference,
         string $side,
         ?int $lcaId,
-        ?string $key = null
+        ?string $key = null,
+        int $connectionDepth = 1
     ): array {
+        [$finalEn, $finalTa] = $this->normalizeDisplayTitle($titleEn, $titleTa, $generationDifference, $key);
+        if ($connectionDepth >= 2) {
+            $displayLevel = $connectionDepth - 1;
+            $finalEn .= ' (Level ' . $displayLevel . ')';
+            $finalTa .= ' (நிலை ' . $displayLevel . ')';
+        }
+
         return [
             'key' => $key,
-            'title_en' => $titleEn,
-            'title_ta' => $titleTa,
+            'title_en' => $finalEn,
+            'title_ta' => $finalTa,
             'cousin_level' => $cousinLevel,
             'removed' => $removed,
             'generation_difference' => $generationDifference,
             'side' => $side,
             'lca_id' => $lcaId,
+            'connection_depth' => $connectionDepth,
         ];
     }
 
@@ -949,11 +959,12 @@ final class RelationshipEngine
         ?int $removed,
         int $generationDifference,
         string $side,
-        ?int $lcaId
+        ?int $lcaId,
+        int $connectionDepth = 1
     ): array {
         $entry = $this->dictionary[$key] ?? null;
         if ($entry === null) {
-            return $this->buildResult($key, $key, $cousinLevel, $removed, $generationDifference, $side, $lcaId, $key);
+            return $this->buildResult($key, $key, $cousinLevel, $removed, $generationDifference, $side, $lcaId, $key, $connectionDepth);
         }
 
         return $this->buildResult(
@@ -964,8 +975,82 @@ final class RelationshipEngine
             $generationDifference,
             $side,
             $lcaId,
-            $key
+            $key,
+            $connectionDepth
         );
+    }
+
+    private function normalizeDisplayTitle(string $titleEn, string $titleTa, int $generationDifference, ?string $key): array
+    {
+        // Standardized generation naming for grandparent/grandchild chains across blood and in-law paths.
+        if ($generationDifference === -2) {
+            if ($this->isFemaleKey($key)) {
+                return ['Grandmother', 'பாட்டி'];
+            }
+            if ($this->isMaleKey($key)) {
+                return ['Grandfather', 'தாத்தா'];
+            }
+            return ['Grandparent', 'முன்னோர்'];
+        }
+
+        if ($generationDifference === 2) {
+            if ($this->isFemaleKey($key)) {
+                return ['Granddaughter', 'பேத்தி'];
+            }
+            if ($this->isMaleKey($key)) {
+                return ['Grandson', 'பேரன்'];
+            }
+            return ['Grandchild', 'பின்வந்தவர்'];
+        }
+
+        if ($generationDifference < -2) {
+            $greatLevel = abs($generationDifference) - 2;
+            $en = $greatLevel === 1 ? 'Great Grandparent' : ($greatLevel . ' Great Grandparent');
+            $ta = $this->ordinalTamil($greatLevel) . ' தலைமுறை முன்னோர்';
+            return [$en, $ta];
+        }
+
+        if ($generationDifference > 2) {
+            $greatLevel = $generationDifference - 2;
+            $en = $greatLevel === 1 ? 'Great Grandchild' : ($greatLevel . ' Great Grandchild');
+            $ta = $this->ordinalTamil($greatLevel) . ' தலைமுறை பின்வந்தவர்';
+            return [$en, $ta];
+        }
+
+        return [$titleEn, $titleTa];
+    }
+
+    private function isFemaleKey(?string $key): bool
+    {
+        if ($key === null || $key === '') {
+            return false;
+        }
+        return preg_match('/(mother|daughter|sister|wife|aunt|niece|grandmother|granddaughter|_female)/', $key) === 1;
+    }
+
+    private function isMaleKey(?string $key): bool
+    {
+        if ($key === null || $key === '') {
+            return false;
+        }
+        return preg_match('/(father|son|brother|husband|uncle|nephew|grandfather|grandson|_male)/', $key) === 1;
+    }
+
+    private function ordinalTamil(int $n): string
+    {
+        $map = [
+            1 => 'முதலாம்',
+            2 => 'இரண்டாம்',
+            3 => 'மூன்றாம்',
+            4 => 'நான்காம்',
+            5 => 'ஐந்தாம்',
+            6 => 'ஆறாம்',
+            7 => 'ஏழாம்',
+            8 => 'எட்டாம்',
+            9 => 'ஒன்பதாம்',
+            10 => 'பத்தாம்',
+        ];
+        return $map[$n] ?? ($n . 'ஆம்');
     }
 }
 
