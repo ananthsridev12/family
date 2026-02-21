@@ -47,6 +47,19 @@
       <input type="date" name="date_of_death" class="form-control" value="<?= htmlspecialchars((string)($person['date_of_death'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
     </div>
 
+    <div class="col-md-6 position-relative">
+      <label class="form-label">Father (optional update)</label>
+      <input type="text" id="father_search" class="form-control" placeholder="Search father name or ID">
+      <input type="hidden" name="father_person_id" id="father_person_id">
+      <div id="father_results" class="list-group position-absolute w-100"></div>
+    </div>
+    <div class="col-md-6 position-relative">
+      <label class="form-label">Mother (optional update)</label>
+      <input type="text" id="mother_search" class="form-control" placeholder="Search mother name or ID">
+      <input type="hidden" name="mother_person_id" id="mother_person_id">
+      <div id="mother_results" class="list-group position-absolute w-100"></div>
+    </div>
+
     <div class="col-md-3">
       <label class="form-label">Blood Group</label>
       <input type="text" name="blood_group" class="form-control" value="<?= htmlspecialchars((string)($person['blood_group'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
@@ -82,4 +95,50 @@
     <a class="btn btn-outline-secondary" href="/index.php?route=member/add-marriage">Add Marriage</a>
   </div>
 </form>
+<script>
+(function () {
+  function attachSearch(inputId, hiddenId, resultsId) {
+    var input = document.getElementById(inputId);
+    var hidden = document.getElementById(hiddenId);
+    var results = document.getElementById(resultsId);
+    var timer = null;
+
+    function clearResults() { results.innerHTML = ''; }
+    function selectItem(item) {
+      input.value = (item.display_name || item.full_name) + ' (ID: ' + item.person_id + ')';
+      hidden.value = item.person_id;
+      clearResults();
+    }
+
+    input.addEventListener('input', function () {
+      var q = input.value.trim();
+      hidden.value = '';
+      clearResults();
+      if (q.length < 2) return;
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        fetch('/index.php?route=member/person-search&q=' + encodeURIComponent(q))
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            clearResults();
+            data.forEach(function (item) {
+              var btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'list-group-item list-group-item-action';
+              btn.textContent = (item.display_name || item.full_name) + ' (ID: ' + item.person_id + ')';
+              btn.addEventListener('click', function () { selectItem(item); });
+              results.appendChild(btn);
+            });
+          });
+      }, 300);
+    });
+    document.addEventListener('click', function (e) {
+      if (!results.contains(e.target) && e.target !== input) clearResults();
+    });
+  }
+
+  attachSearch('father_search', 'father_person_id', 'father_results');
+  attachSearch('mother_search', 'mother_person_id', 'mother_results');
+})();
+</script>
 <?php include __DIR__ . '/../layouts/app_end.php'; ?>

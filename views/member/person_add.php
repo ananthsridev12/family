@@ -38,20 +38,17 @@
     </div>
 
     <div class="col-md-6 position-relative">
-      <label class="form-label">Parent (optional)</label>
-      <input type="text" id="parent_search" class="form-control" placeholder="Search parent name or ID">
-      <input type="hidden" name="parent_person_id" id="parent_person_id">
-      <div id="parent_results" class="list-group position-absolute w-100"></div>
+      <label class="form-label">Father (optional)</label>
+      <input type="text" id="father_search" class="form-control" placeholder="Search father name or ID">
+      <input type="hidden" name="father_person_id" id="father_person_id">
+      <div id="father_results" class="list-group position-absolute w-100"></div>
     </div>
 
-    <div class="col-md-3">
-      <label class="form-label">Parent Type (if selected)</label>
-      <select name="parent_link_type" class="form-select">
-        <option value="father">Father</option>
-        <option value="mother">Mother</option>
-        <option value="adoptive">Adoptive</option>
-        <option value="step">Step</option>
-      </select>
+    <div class="col-md-6 position-relative">
+      <label class="form-label">Mother (optional)</label>
+      <input type="text" id="mother_search" class="form-control" placeholder="Search mother name or ID">
+      <input type="hidden" name="mother_person_id" id="mother_person_id">
+      <div id="mother_results" class="list-group position-absolute w-100"></div>
     </div>
 
     <div class="col-md-3">
@@ -236,7 +233,8 @@
   attachSearch('existing_search', 'existing_person_id', 'existing_results', function () {
     fullName.value = '';
   });
-  attachSearch('parent_search', 'parent_person_id', 'parent_results');
+  attachSearch('father_search', 'father_person_id', 'father_results');
+  attachSearch('mother_search', 'mother_person_id', 'mother_results');
 
   fullName.addEventListener('input', function () {
     if (fullName.value.trim() !== '') {

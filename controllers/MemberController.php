@@ -200,8 +200,10 @@ final class MemberController extends BaseController
         $isAlive = isset($_POST['is_alive']) ? 1 : 0;
         $relationType = (string)($_POST['relation_type'] ?? 'none');
         $parentType = (string)($_POST['parent_type'] ?? 'father');
-        $parentPersonId = (int)($_POST['parent_person_id'] ?? 0);
-        $parentLinkType = (string)($_POST['parent_link_type'] ?? 'father');
+        $parentPersonId = (int)($_POST['parent_person_id'] ?? 0); // backward compatibility
+        $parentLinkType = (string)($_POST['parent_link_type'] ?? 'father'); // backward compatibility
+        $fatherPersonId = (int)($_POST['father_person_id'] ?? 0);
+        $motherPersonId = (int)($_POST['mother_person_id'] ?? 0);
         $birthOrder = $this->normalizeInt($_POST['birth_order'] ?? null);
         $spouseMarriageDate = $this->normalizeDate($_POST['spouse_marriage_date'] ?? null);
 
@@ -252,6 +254,12 @@ final class MemberController extends BaseController
             if ($parentPersonId > 0) {
                 $this->linkParentChild($parentPersonId, $targetPersonId, $parentLinkType);
             }
+            if ($fatherPersonId > 0) {
+                $this->linkParentChild($fatherPersonId, $targetPersonId, 'father');
+            }
+            if ($motherPersonId > 0) {
+                $this->linkParentChild($motherPersonId, $targetPersonId, 'mother');
+            }
 
             $defaultAnchorId = (int)(app_user()['person_id'] ?? 0);
             $anchorId = $referencePersonId > 0 ? $referencePersonId : ($defaultAnchorId > 0 ? $defaultAnchorId : (int)$targetPersonId);
@@ -298,6 +306,8 @@ final class MemberController extends BaseController
         if (!in_array($gender, ['male', 'female', 'other', 'unknown'], true)) {
             $gender = 'unknown';
         }
+        $fatherPersonId = (int)($_POST['father_person_id'] ?? 0);
+        $motherPersonId = (int)($_POST['mother_person_id'] ?? 0);
 
         $this->people->update($id, [
             ':full_name' => $fullName,
@@ -314,6 +324,13 @@ final class MemberController extends BaseController
             ':native_location' => $this->nullableString($_POST['native_location'] ?? null),
             ':is_alive' => isset($_POST['is_alive']) ? 1 : 0,
         ]);
+
+        if ($fatherPersonId > 0) {
+            $this->linkParentChild($fatherPersonId, $id, 'father');
+        }
+        if ($motherPersonId > 0) {
+            $this->linkParentChild($motherPersonId, $id, 'mother');
+        }
 
         $_SESSION['flash_success'] = 'Person updated.';
         header('Location: /index.php?route=member/edit-person&id=' . $id);
