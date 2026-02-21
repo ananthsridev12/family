@@ -129,17 +129,6 @@ final class RelationshipEngine
         $spouseId = (int)$a['spouse_id'];
         $bSpouseId = (int)$b['spouse_id'];
 
-        // Co-sister: both female, each married to brothers.
-        if ((string)$a['gender'] === 'female'
-            && (string)$b['gender'] === 'female'
-            && $spouseId > 0
-            && $bSpouseId > 0
-            && $this->isMutualSpouse($aid, $spouseId)
-            && $this->isMutualSpouse($bid, $bSpouseId)
-            && $this->isSibling($spouseId, $bSpouseId)) {
-            return $this->fromKey('co_sister', null, null, 0, 'In-Law', null);
-        }
-
         if ($spouseId > 0 && $this->isMutualSpouse($aid, $spouseId)) {
             $spouse = $this->people[$spouseId] ?? null;
             if ($spouse !== null) {
@@ -157,9 +146,7 @@ final class RelationshipEngine
                 // Spouse's sibling's spouse is also in-law.
                 if ((int)$b['spouse_id'] > 0 && $this->isMutualSpouse($bid, (int)$b['spouse_id'])) {
                     if ($this->isSibling($spouseId, (int)$b['spouse_id'])) {
-                        $key = ((string)$b['gender'] === 'female')
-                            ? $this->sisterInLawKeyForSiblingSpouse($aid, $bid, (int)$b['spouse_id'])
-                            : 'brother_in_law';
+                        $key = ((string)$b['gender'] === 'female') ? 'sister_in_law' : 'brother_in_law';
                         return $this->fromKey($key, null, null, 0, 'In-Law', null);
                     }
                 }
@@ -190,9 +177,7 @@ final class RelationshipEngine
         if ($bSpouseId > 0 && $this->isMutualSpouse($bid, $bSpouseId)) {
             $bSpouse = $this->people[$bSpouseId] ?? null;
             if ($bSpouse !== null && $this->isSibling($aid, (int)$bSpouse['person_id'])) {
-                $key = ((string)$b['gender'] === 'female')
-                    ? $this->sisterInLawKeyForSiblingSpouse($aid, $bid, (int)$bSpouse['person_id'])
-                    : 'brother_in_law';
+                $key = ((string)$b['gender'] === 'female') ? 'sister_in_law' : 'brother_in_law';
                 return $this->fromKey($key, null, null, 0, 'In-Law', null);
             }
         }
@@ -335,20 +320,6 @@ final class RelationshipEngine
         return $candidateSpouseId > 0
             && $this->isMutualSpouse($candidateId, $candidateSpouseId)
             && $this->isSibling($candidateSpouseId, $personId);
-    }
-
-    private function sisterInLawKeyForSiblingSpouse(int $aid, int $bid, int $siblingId): string
-    {
-        $a = $this->people[$aid] ?? null;
-        $b = $this->people[$bid] ?? null;
-        $sibling = $this->people[$siblingId] ?? null;
-        if ($a === null || $b === null || $sibling === null) {
-            return 'sister_in_law';
-        }
-        if ((string)$a['gender'] !== 'male' || (string)$b['gender'] !== 'female' || (string)$sibling['gender'] !== 'male') {
-            return 'sister_in_law';
-        }
-        return $this->isOlderByBirthData($siblingId, $aid) ? 'anni' : 'sister_in_law';
     }
 
     private function spouseSiblingKey(string $speakerGender, string $targetGender): string

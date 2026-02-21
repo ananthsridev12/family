@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS relationship_dictionary (
     removed INT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+DELETE FROM relationship_dictionary;
+
 INSERT INTO relationship_dictionary
 (`key`, title_en, title_ta, category, side, generation, degree, gender, cousin_level, removed)
 VALUES
@@ -72,18 +74,13 @@ VALUES
 ('periyappa','Paternal Elder Uncle','பெரியப்பா','extended','Paternal',-1,2,'male',NULL,NULL),
 ('chithappa','Paternal Younger Uncle','சித்தப்பா','extended','Paternal',-1,2,'male',NULL,NULL),
 ('athai','Paternal Aunt','அத்தை','extended','Paternal',-1,2,'female',NULL,NULL),
-('machan','Brother-in-law','மைத்துனர்','inlaw','In-Law',0,2,'male',NULL,NULL),
 
 ('father_in_law','Father-in-law','மாமனார்','inlaw','In-Law',-1,2,'male',NULL,NULL),
 ('mother_in_law','Mother-in-law','மாமியார்','inlaw','In-Law',-1,2,'female',NULL,NULL),
 ('son_in_law','Son-in-law','மாப்பிள்ளை','inlaw','In-Law',1,2,'male',NULL,NULL),
 ('daughter_in_law','Daughter-in-law','மருமகள்','inlaw','In-Law',1,2,'female',NULL,NULL),
 ('brother_in_law','Brother-in-law','மைத்துனர்','inlaw','In-Law',0,2,'male',NULL,NULL),
-('sister_in_law','Sister-in-law','மைத்துனி','inlaw','In-Law',0,2,'female',NULL,NULL),
-('macchini','Sister-in-law / Female Cousin','மைத்துனி','inlaw','In-Law',0,2,'female',NULL,NULL),
-('nathanar','Husband''s Sister','மைத்துனி','inlaw','In-Law',0,2,'female',NULL,NULL),
-('co_sister','Co-sister','மத்தினி','inlaw','In-Law',0,2,'female',NULL,NULL),
-('anni','Anni (Elder brother''s wife)','அண்ணி','inlaw','In-Law',0,2,'female',NULL,NULL)
+('sister_in_law','Sister-in-law','மைத்துனி','inlaw','In-Law',0,2,'female',NULL,NULL)
 ON DUPLICATE KEY UPDATE
 title_en = VALUES(title_en),
 title_ta = VALUES(title_ta),
