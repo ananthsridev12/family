@@ -281,23 +281,40 @@ final class RelationshipEngine
             $isFemale = str_contains($key, 'sister');
             return $this->fromKey($isFemale ? 'sister_in_law' : 'brother_in_law', null, null, 0, 'In-Law', null);
         }
-
-        $level = $this->affinalLevelFromBase($base);
-        return $this->fromKey('affinal_relative_level_' . $level, null, null, (int)($base['generation_difference'] ?? 0), 'In-Law', null);
-    }
-
-    private function affinalLevelFromBase(array $base): int
-    {
-        $cousinLevel = (int)($base['cousin_level'] ?? 0);
-        $removed = (int)($base['removed'] ?? 0);
-        if ($cousinLevel >= 2 || $removed >= 1) {
-            return 3;
+        $map = [
+            'paternal_uncle' => 'mama',
+            'periyappa' => 'mama',
+            'chithappa' => 'mama',
+            'mama' => 'mama',
+            'paternal_aunt' => 'athai',
+            'athai' => 'athai',
+            'maternal_aunt' => 'athai',
+            'periyamma' => 'athai',
+            'chithi' => 'athai',
+            'nephew' => 'nephew',
+            'nephew_brother_son' => 'nephew_brother_son',
+            'nephew_sister_son' => 'nephew_sister_son',
+            'niece' => 'niece',
+            'niece_brother_daughter' => 'niece_brother_daughter',
+            'niece_sister_daughter' => 'niece_sister_daughter',
+        ];
+        if (isset($map[$key])) {
+            return $this->fromKey($map[$key], null, null, (int)($base['generation_difference'] ?? 0), 'In-Law', null);
         }
-        $gd = abs((int)($base['generation_difference'] ?? 0));
-        if ($gd >= 2 || $cousinLevel === 1) {
-            return 2;
-        }
-        return 1;
+
+        // Exact deterministic fallback for long-distance affinal relatives.
+        $baseEn = trim((string)($base['title_en'] ?? 'Relative'));
+        $baseTa = trim((string)($base['title_ta'] ?? 'உறவினர்'));
+        return $this->buildResult(
+            "Spouse's " . $baseEn,
+            "துணையின் " . $baseTa,
+            $base['cousin_level'] ?? null,
+            $base['removed'] ?? null,
+            (int)($base['generation_difference'] ?? 0),
+            'In-Law',
+            null,
+            'spouse_of_' . $key
+        );
     }
 
     private function findLowestCommonAncestor(int $aId, int $bId): ?array
