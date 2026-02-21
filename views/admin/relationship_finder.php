@@ -28,10 +28,19 @@
 <?php if (!empty($relation)): ?>
   <div class="card mt-4"><div class="card-body">
     <h2 class="h6 mb-3">Result</h2>
-    <?php $useTa = (($lang ?? 'en') === 'ta'); ?>
-    <p class="mb-1"><strong>A → B:</strong> <?= htmlspecialchars($useTa ? (string)$relation['title_ta'] : (string)$relation['title_en'], ENT_QUOTES, 'UTF-8') ?></p>
+    <?php
+      $aToBEn = trim((string)($relation['title_en'] ?? ''));
+      $aToBTa = trim((string)($relation['title_ta'] ?? ''));
+      $aToB = ($aToBTa !== '' && $aToBTa !== $aToBEn) ? ($aToBEn . ' / ' . $aToBTa) : $aToBEn;
+    ?>
+    <p class="mb-1"><strong>A -> B:</strong> <?= htmlspecialchars($aToB, ENT_QUOTES, 'UTF-8') ?></p>
     <?php if (!empty($reverse_relation)): ?>
-      <p class="mb-1"><strong>B → A:</strong> <?= htmlspecialchars($useTa ? (string)$reverse_relation['title_ta'] : (string)$reverse_relation['title_en'], ENT_QUOTES, 'UTF-8') ?></p>
+      <?php
+        $bToAEn = trim((string)($reverse_relation['title_en'] ?? ''));
+        $bToATa = trim((string)($reverse_relation['title_ta'] ?? ''));
+        $bToA = ($bToATa !== '' && $bToATa !== $bToAEn) ? ($bToAEn . ' / ' . $bToATa) : $bToAEn;
+      ?>
+      <p class="mb-1"><strong>B -> A:</strong> <?= htmlspecialchars($bToA, ENT_QUOTES, 'UTF-8') ?></p>
     <?php endif; ?>
     <p class="mb-1"><strong>Side:</strong> <?= htmlspecialchars((string)$relation['side'], ENT_QUOTES, 'UTF-8') ?></p>
     <p class="mb-1"><strong>Generation Difference:</strong> <?= (int)$relation['generation_difference'] ?></p>

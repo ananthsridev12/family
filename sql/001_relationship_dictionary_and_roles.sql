@@ -80,7 +80,7 @@ VALUES
 ('sister_in_law','Sister-in-law','மைத்துனி','inlaw','In-Law',0,2,'female',NULL,NULL),
 ('macchini','Sister-in-law / Female Cousin','மச்சினி','inlaw','In-Law',0,2,'female',NULL,NULL),
 ('nathanar','Husband''s Sister','நாத்தனார்','inlaw','In-Law',0,2,'female',NULL,NULL),
-('co_sister','Co-sister','சக்களத்தி','inlaw','In-Law',0,2,'female',NULL,NULL),
+('co_sister','Co-sister','Mattini','inlaw','In-Law',0,2,'female',NULL,NULL),
 ('anni','Anni (Elder brother''s wife)','அண்ணி','inlaw','In-Law',0,2,'female',NULL,NULL)
 ON DUPLICATE KEY UPDATE
 title_en = VALUES(title_en),
@@ -92,5 +92,6 @@ degree = VALUES(degree),
 gender = VALUES(gender),
 cousin_level = VALUES(cousin_level),
 removed = VALUES(removed);
+
 
 

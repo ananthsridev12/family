@@ -115,12 +115,13 @@ final class MemberController extends BaseController
     {
         $items = $this->people->all(500);
         $povId = current_pov_id();
-        $useTa = ((string)($_SESSION['lang'] ?? 'en') === 'ta');
         foreach ($items as &$item) {
             $item['age'] = $this->calculateAge($item);
             if ($povId > 0) {
                 $rel = $this->engine->resolve($povId, (int)$item['person_id']);
-                $item['relationship_status'] = (string)($useTa ? ($rel['title_ta'] ?? $rel['title_en'] ?? 'Unknown') : ($rel['title_en'] ?? 'Unknown'));
+                $en = trim((string)($rel['title_en'] ?? 'Unknown'));
+                $ta = trim((string)($rel['title_ta'] ?? ''));
+                $item['relationship_status'] = ($ta !== '' && $ta !== $en) ? ($en . ' / ' . $ta) : $en;
             } else {
                 $item['relationship_status'] = '-';
             }
