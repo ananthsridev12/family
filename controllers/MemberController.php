@@ -144,17 +144,31 @@ final class MemberController extends BaseController
     public function relationshipFinder(): void
     {
         $relation = null;
+        $reverseRelation = null;
+        $personAId = current_pov_id();
+        $personBId = 0;
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-            $a = (int)($_POST['person_a_id'] ?? 0);
-            $b = (int)($_POST['person_b_id'] ?? 0);
-            if ($a > 0 && $b > 0) {
-                $relation = $this->engine->resolve($a, $b);
+            $usePov = isset($_POST['use_pov_as_a']) ? 1 : 0;
+            $postedA = (int)($_POST['person_a_id'] ?? 0);
+            $personAId = $usePov === 1 ? current_pov_id() : $postedA;
+            $personBId = (int)($_POST['person_b_id'] ?? 0);
+            if ($personAId > 0 && $personBId > 0) {
+                $relation = $this->engine->resolve($personAId, $personBId);
+                $reverseRelation = $this->engine->resolve($personBId, $personAId);
             }
         }
+
+        $personA = $personAId > 0 ? $this->people->findById($personAId) : null;
+        $personB = $personBId > 0 ? $this->people->findById($personBId) : null;
 
         $this->render('member/relationship_finder', [
             'title' => 'Relationship Finder',
             'relation' => $relation,
+            'reverse_relation' => $reverseRelation,
+            'person_a_id' => $personAId,
+            'person_b_id' => $personBId,
+            'person_a_name' => (string)($personA['full_name'] ?? ''),
+            'person_b_name' => (string)($personB['full_name'] ?? ''),
             'lang' => (string)($_GET['lang'] ?? 'en'),
         ]);
     }
