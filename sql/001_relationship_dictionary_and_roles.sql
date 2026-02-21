@@ -87,7 +87,11 @@ VALUES
 ('son_in_law','Son-in-law','மாப்பிள்ளை','inlaw','In-Law',1,2,'male',NULL,NULL),
 ('daughter_in_law','Daughter-in-law','மருமகள்','inlaw','In-Law',1,2,'female',NULL,NULL),
 ('brother_in_law','Brother-in-law','மைத்துனர்','inlaw','In-Law',0,2,'male',NULL,NULL),
-('sister_in_law','Sister-in-law','மைத்துனி','inlaw','In-Law',0,2,'female',NULL,NULL)
+('sister_in_law','Sister-in-law','மைத்துனி','inlaw','In-Law',0,2,'female',NULL,NULL),
+('co_sister_brothers_wives','Co-Sister (Brothers'' Wives)','சகோதரரின் மனைவி','inlaw','In-Law',0,2,'female',NULL,NULL),
+('husbands_sister_safe','Husband''s Sister','கணவனின் சகோதரி','inlaw','In-Law',0,2,'female',NULL,NULL),
+('brothers_wife_safe','Brother''s Wife','சகோதரரின் மனைவி','inlaw','In-Law',0,2,'female',NULL,NULL),
+('sisters_husband_safe','Sister''s Husband','சகோதரியின் கணவன்','inlaw','In-Law',0,2,'male',NULL,NULL)
 ON DUPLICATE KEY UPDATE
 title_en = VALUES(title_en),
 title_ta = VALUES(title_ta),

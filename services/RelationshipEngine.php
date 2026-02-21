@@ -129,6 +129,26 @@ final class RelationshipEngine
         $spouseId = (int)$a['spouse_id'];
         $bSpouseId = (int)$b['spouse_id'];
 
+        // Co-sister (brothers' wives): both female, each is spouse of male siblings.
+        if ($this->isCoSisterBrothersWives($aid, $bid)) {
+            return $this->fromKey('co_sister_brothers_wives', null, null, 0, 'In-Law', null);
+        }
+
+        // Brother's wife -> sister (A is brother's wife, B is husband's sister).
+        if ($this->isHusbandsSisterFromBrothersWife($aid, $bid)) {
+            return $this->fromKey('husbands_sister_safe', null, null, 0, 'In-Law', null);
+        }
+
+        // Sister -> brother's wife.
+        if ($this->isBrothersWifeFromSister($aid, $bid)) {
+            return $this->fromKey('brothers_wife_safe', null, null, 0, 'In-Law', null);
+        }
+
+        // Sibling -> sister's husband.
+        if ($this->isSistersHusband($aid, $bid)) {
+            return $this->fromKey('sisters_husband_safe', null, null, 0, 'In-Law', null);
+        }
+
         if ($spouseId > 0 && $this->isMutualSpouse($aid, $spouseId)) {
             $spouse = $this->people[$spouseId] ?? null;
             if ($spouse !== null) {
@@ -317,6 +337,90 @@ final class RelationshipEngine
         }
         $child = $this->people[$childId];
         return (int)$child['father_id'] === $parentId || (int)$child['mother_id'] === $parentId;
+    }
+
+    private function mutualSpouseId(int $personId): int
+    {
+        if (!isset($this->people[$personId])) {
+            return 0;
+        }
+        $sid = (int)($this->people[$personId]['spouse_id'] ?? 0);
+        if ($sid > 0 && $this->isMutualSpouse($personId, $sid)) {
+            return $sid;
+        }
+        return 0;
+    }
+
+    private function isCoSisterBrothersWives(int $aid, int $bid): bool
+    {
+        if (!isset($this->people[$aid], $this->people[$bid])) {
+            return false;
+        }
+        if ((string)$this->people[$aid]['gender'] !== 'female' || (string)$this->people[$bid]['gender'] !== 'female') {
+            return false;
+        }
+        $aSpouse = $this->mutualSpouseId($aid);
+        $bSpouse = $this->mutualSpouseId($bid);
+        if ($aSpouse <= 0 || $bSpouse <= 0) {
+            return false;
+        }
+        if ((string)$this->people[$aSpouse]['gender'] !== 'male' || (string)$this->people[$bSpouse]['gender'] !== 'male') {
+            return false;
+        }
+        return $this->isSibling($aSpouse, $bSpouse);
+    }
+
+    private function isHusbandsSisterFromBrothersWife(int $aid, int $bid): bool
+    {
+        if (!isset($this->people[$aid], $this->people[$bid])) {
+            return false;
+        }
+        $aSpouse = $this->mutualSpouseId($aid);
+        if ($aSpouse <= 0) {
+            return false;
+        }
+        if ((string)$this->people[$aid]['gender'] !== 'female' || (string)$this->people[$aSpouse]['gender'] !== 'male') {
+            return false;
+        }
+        return ((string)$this->people[$bid]['gender'] === 'female') && $this->isSibling($aSpouse, $bid);
+    }
+
+    private function isBrothersWifeFromSister(int $aid, int $bid): bool
+    {
+        if (!isset($this->people[$aid], $this->people[$bid])) {
+            return false;
+        }
+        if ((string)$this->people[$aid]['gender'] !== 'female' || (string)$this->people[$bid]['gender'] !== 'female') {
+            return false;
+        }
+        $bSpouse = $this->mutualSpouseId($bid);
+        if ($bSpouse <= 0 || (string)$this->people[$bSpouse]['gender'] !== 'male') {
+            return false;
+        }
+        return $this->isSibling($aid, $bSpouse);
+    }
+
+    private function isSistersHusband(int $aid, int $bid): bool
+    {
+        if (!isset($this->people[$aid], $this->people[$bid])) {
+            return false;
+        }
+        if ((string)$this->people[$bid]['gender'] !== 'male') {
+            return false;
+        }
+        foreach ($this->people as $sibling) {
+            $sid = (int)$sibling['person_id'];
+            if (!$this->isSibling($aid, $sid)) {
+                continue;
+            }
+            if ((string)$sibling['gender'] !== 'female') {
+                continue;
+            }
+            if ($this->mutualSpouseId($sid) === $bid) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function nephewNieceKeyByContext(int $aid, int $bid, string $targetGender): string
