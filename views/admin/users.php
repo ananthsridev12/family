@@ -32,6 +32,12 @@
       <label class="form-label">Password</label>
       <input class="form-control" name="password" type="password" required>
     </div>
+    <div class="col-md-4 position-relative">
+      <label class="form-label">Link Person (optional)</label>
+      <input class="form-control person-search" data-target="person_id_new" data-results="person_results_new" placeholder="Search name or ID">
+      <input type="hidden" name="person_id" id="person_id_new">
+      <div id="person_results_new" class="list-group position-absolute w-100"></div>
+    </div>
     <div class="col-md-4">
       <label class="form-label">Role</label>
       <select class="form-select" name="role">
@@ -62,6 +68,7 @@
           <th>Name</th>
           <th>Email</th>
           <th>Role</th>
+          <th>Linked Person</th>
           <th>Status</th>
           <th>Action</th>
         </tr>
@@ -69,7 +76,13 @@
       <tbody>
         <?php foreach (($rows ?? []) as $row): ?>
         <?php $isSelf = (int)($row['user_id'] ?? 0) === (int)(app_user()['user_id'] ?? 0); ?>
+        <?php $linkedId = (int)($row['person_id'] ?? 0); ?>
+        <?php $linkedName = $linkedId > 0 ? (string)($person_map[$linkedId] ?? '') : ''; ?>
+        <?php $linkedLabel = $linkedId > 0 ? ($linkedName !== '' ? ($linkedName . ' (#' . $linkedId . ')') : ('#' . $linkedId)) : ''; ?>
         <?php $formId = 'update-user-' . (int)$row['user_id']; ?>
+        <?php $searchId = 'person_search_' . (int)$row['user_id']; ?>
+        <?php $hiddenId = 'person_id_' . (int)$row['user_id']; ?>
+        <?php $resultsId = 'person_results_' . (int)$row['user_id']; ?>
         <tr>
           <td><?= (int)$row['user_id'] ?></td>
           <td><?= htmlspecialchars((string)($row['name'] ?? $row['username'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
@@ -81,6 +94,11 @@
               <option value="full_editor" <?= $role === 'full_editor' ? 'selected' : '' ?>>Full Editor</option>
               <option value="admin" <?= $role === 'admin' ? 'selected' : '' ?>>Admin</option>
             </select>
+          </td>
+          <td class="position-relative">
+            <input class="form-control form-control-sm person-search" id="<?= $searchId ?>" data-target="<?= $hiddenId ?>" data-results="<?= $resultsId ?>" placeholder="Search person" value="<?= htmlspecialchars($linkedLabel, ENT_QUOTES, 'UTF-8') ?>" <?= $isSelf ? 'disabled' : '' ?>>
+            <input type="hidden" name="person_id" id="<?= $hiddenId ?>" form="<?= $formId ?>" value="<?= $linkedId > 0 ? $linkedId : '' ?>">
+            <div id="<?= $resultsId ?>" class="list-group position-absolute w-100"></div>
           </td>
           <td>
             <div class="form-check">
@@ -102,4 +120,56 @@
     </table>
   </div>
 </div>
+<script>
+(function () {
+  function attachSearch(input, hidden, results) {
+    var timer = null;
+    function clearResults() { results.innerHTML = ''; }
+    function selectItem(item) {
+      input.value = (item.display_name || item.full_name) + ' (#' + item.person_id + ')';
+      hidden.value = item.person_id;
+      clearResults();
+    }
+    input.addEventListener('input', function () {
+      var q = input.value.trim();
+      if (q.length < 2) {
+        clearResults();
+        return;
+      }
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        fetch('/index.php?route=person/search&q=' + encodeURIComponent(q))
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            clearResults();
+            data.forEach(function (item) {
+              var btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'list-group-item list-group-item-action';
+              btn.textContent = (item.display_name || item.full_name) + ' (#' + item.person_id + ')';
+              btn.addEventListener('click', function () { selectItem(item); });
+              results.appendChild(btn);
+            });
+          });
+      }, 300);
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!results.contains(e.target) && e.target !== input) {
+        clearResults();
+      }
+    });
+  }
+
+  document.querySelectorAll('.person-search').forEach(function (input) {
+    var hiddenId = input.getAttribute('data-target');
+    var resultsId = input.getAttribute('data-results');
+    if (!hiddenId || !resultsId) return;
+    var hidden = document.getElementById(hiddenId);
+    var results = document.getElementById(resultsId);
+    if (!hidden || !results) return;
+    attachSearch(input, hidden, results);
+  });
+})();
+</script>
 <?php include __DIR__ . '/../layouts/app_end.php'; ?>

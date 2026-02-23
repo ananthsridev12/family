@@ -61,6 +61,19 @@ final class UserModel
         ]);
     }
 
+    public function updateRoleStatusAndPerson(int $userId, string $role, bool $isActive, ?int $personId): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE users SET role = :role, is_active = :is_active, person_id = :person_id WHERE user_id = :id'
+        );
+        $stmt->execute([
+            ':role' => $role,
+            ':is_active' => $isActive ? 1 : 0,
+            ':person_id' => $personId,
+            ':id' => $userId,
+        ]);
+    }
+
     public function updatePassword(int $userId, string $hash): void
     {
         $stmt = $this->db->prepare('UPDATE users SET password_hash = :hash WHERE user_id = :id');

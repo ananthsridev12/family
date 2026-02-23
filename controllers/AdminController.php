@@ -161,12 +161,19 @@ final class AdminController extends BaseController
                 $userId = (int)($_POST['user_id'] ?? 0);
                 $role = (string)($_POST['role'] ?? 'limited_member');
                 $isActive = isset($_POST['is_active']);
+                $personId = (int)($_POST['person_id'] ?? 0);
+                $personId = $personId > 0 ? $personId : null;
 
                 if ($userId > 0 && $userId !== (int)(app_user()['user_id'] ?? 0)) {
                     if (!in_array($role, ['admin', 'full_editor', 'limited_member'], true)) {
                         $role = 'limited_member';
                     }
-                    $this->users->updateRoleStatus($userId, $role, $isActive);
+                    if ($personId !== null && $this->people->findById($personId) === null) {
+                        $_SESSION['flash_error'] = 'Selected person not found.';
+                        header('Location: /index.php?route=admin/users');
+                        exit;
+                    }
+                    $this->users->updateRoleStatusAndPerson($userId, $role, $isActive, $personId);
                 }
                 header('Location: /index.php?route=admin/users');
                 exit;
@@ -178,6 +185,8 @@ final class AdminController extends BaseController
             $password = (string)($_POST['password'] ?? '');
             $role = (string)($_POST['role'] ?? 'limited_member');
             $isActive = isset($_POST['is_active']) ? 1 : 0;
+            $personId = (int)($_POST['person_id'] ?? 0);
+            $personId = $personId > 0 ? $personId : null;
 
             if ($name === '' || $email === '' || $password === '') {
                 $_SESSION['flash_error'] = 'Name, email, and password are required.';
@@ -191,6 +200,11 @@ final class AdminController extends BaseController
             }
             if (!in_array($role, ['admin', 'full_editor', 'limited_member'], true)) {
                 $role = 'limited_member';
+            }
+            if ($personId !== null && $this->people->findById($personId) === null) {
+                $_SESSION['flash_error'] = 'Selected person not found.';
+                header('Location: /index.php?route=admin/users');
+                exit;
             }
 
             if ($username === '') {
@@ -206,7 +220,7 @@ final class AdminController extends BaseController
                     ':password_hash' => $hash,
                     ':role' => $role,
                     ':is_active' => $isActive,
-                    ':person_id' => null,
+                    ':person_id' => $personId,
                 ]);
                 $_SESSION['flash_success'] = 'User created.';
             } catch (Throwable $e) {
@@ -216,9 +230,23 @@ final class AdminController extends BaseController
             exit;
         }
 
+        $rows = $this->users->list(200);
+        $personIds = [];
+        foreach ($rows as $row) {
+            $pid = (int)($row['person_id'] ?? 0);
+            if ($pid > 0) {
+                $personIds[] = $pid;
+            }
+        }
+        $personMap = [];
+        foreach ($this->people->findByIds($personIds) as $p) {
+            $personMap[(int)$p['person_id']] = (string)$p['full_name'];
+        }
+
         $this->render('admin/users', [
             'title' => 'Users',
-            'rows' => $this->users->list(200),
+            'rows' => $rows,
+            'person_map' => $personMap,
             'error' => $_SESSION['flash_error'] ?? null,
             'success' => $_SESSION['flash_success'] ?? null,
         ]);

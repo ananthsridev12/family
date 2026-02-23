@@ -99,6 +99,26 @@ final class PersonModel
         return $stmt->fetchAll();
     }
 
+    public function findByIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter($ids, static fn($id): bool => (int)$id > 0)));
+        if ($ids === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare(
+            'SELECT person_id, full_name
+             FROM persons
+             WHERE person_id IN (' . $placeholders . ')
+               AND (is_deleted = 0 OR is_deleted IS NULL)'
+        );
+        foreach ($ids as $i => $id) {
+            $stmt->bindValue($i + 1, (int)$id, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll() ?: [];
+    }
+
     public function create(array $data): int
     {
         $stmt = $this->db->prepare(
