@@ -15,7 +15,7 @@ final class PersonModel
 
     public function findById(int $id): ?array
     {
-        $stmt = $this->db->prepare('SELECT * FROM persons WHERE person_id = :id');
+        $stmt = $this->db->prepare('SELECT * FROM persons WHERE person_id = :id AND (is_deleted = 0 OR is_deleted IS NULL)');
         $stmt->execute([':id' => $id]);
         $row = $stmt->fetch();
         return $row ?: null;
@@ -23,7 +23,14 @@ final class PersonModel
 
     public function searchByName(string $q, int $limit = 10): array
     {
-        $stmt = $this->db->prepare('SELECT person_id, full_name, birth_year FROM persons WHERE full_name LIKE :q ORDER BY full_name ASC LIMIT :limit');
+        $stmt = $this->db->prepare(
+            'SELECT person_id, full_name, birth_year
+             FROM persons
+             WHERE (is_deleted = 0 OR is_deleted IS NULL)
+               AND full_name LIKE :q
+             ORDER BY full_name ASC
+             LIMIT :limit'
+        );
         $stmt->bindValue(':q', '%' . $q . '%', PDO::PARAM_STR);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
@@ -36,7 +43,8 @@ final class PersonModel
             $stmt = $this->db->prepare(
                 'SELECT person_id, full_name
                  FROM persons
-                 WHERE father_id = :id OR mother_id = :id
+                 WHERE (father_id = :id OR mother_id = :id)
+                   AND (is_deleted = 0 OR is_deleted IS NULL)
                  ORDER BY full_name ASC
                  LIMIT 100'
             );
@@ -50,6 +58,7 @@ final class PersonModel
                  FROM parent_child pc
                  INNER JOIN persons p ON p.person_id = pc.child_id
                  WHERE pc.parent_id = :id
+                   AND (p.is_deleted = 0 OR p.is_deleted IS NULL)
                  ORDER BY p.full_name ASC
                  LIMIT 100'
             );
@@ -62,7 +71,14 @@ final class PersonModel
 
     public function branchMembers(int $branchId, int $limit = 200): array
     {
-        $stmt = $this->db->prepare('SELECT person_id, full_name, gender, birth_year FROM persons WHERE branch_id = :branch_id ORDER BY full_name ASC LIMIT :limit');
+        $stmt = $this->db->prepare(
+            'SELECT person_id, full_name, gender, birth_year
+             FROM persons
+             WHERE branch_id = :branch_id
+               AND (is_deleted = 0 OR is_deleted IS NULL)
+             ORDER BY full_name ASC
+             LIMIT :limit'
+        );
         $stmt->bindValue(':branch_id', $branchId, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
@@ -72,8 +88,9 @@ final class PersonModel
     public function all(int $limit = 500): array
     {
         $stmt = $this->db->prepare(
-            'SELECT person_id, full_name, gender, date_of_birth, birth_year, date_of_death, current_location, native_location, spouse_id, father_id, mother_id
+            'SELECT person_id, full_name, gender, date_of_birth, birth_year, date_of_death, current_location, native_location, spouse_id, father_id, mother_id, created_by, is_locked
              FROM persons
+             WHERE (is_deleted = 0 OR is_deleted IS NULL)
              ORDER BY full_name ASC
              LIMIT :limit'
         );
@@ -88,11 +105,11 @@ final class PersonModel
             'INSERT INTO persons (
                 full_name, gender, date_of_birth, birth_year, date_of_death, blood_group,
                 occupation, mobile, email, address, current_location, native_location, is_alive,
-                father_id, mother_id, spouse_id, branch_id
+                father_id, mother_id, spouse_id, branch_id, created_by, editable_scope, is_locked, is_deleted
              ) VALUES (
                 :full_name, :gender, :date_of_birth, :birth_year, :date_of_death, :blood_group,
                 :occupation, :mobile, :email, :address, :current_location, :native_location, :is_alive,
-                :father_id, :mother_id, :spouse_id, :branch_id
+                :father_id, :mother_id, :spouse_id, :branch_id, :created_by, :editable_scope, :is_locked, :is_deleted
              )'
         );
         $stmt->execute($data);

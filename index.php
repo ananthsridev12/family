@@ -6,6 +6,7 @@ session_start();
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/models/PersonModel.php';
 require_once __DIR__ . '/models/BranchModel.php';
+require_once __DIR__ . '/models/UserModel.php';
 require_once __DIR__ . '/services/RelationshipEngine.php';
 require_once __DIR__ . '/controllers/BaseController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
@@ -35,6 +36,17 @@ function app_db(): PDO
 function app_user(): array
 {
     return $_SESSION['user'] ?? [];
+}
+
+function app_user_role(): string
+{
+    $role = (string)(app_user()['role'] ?? '');
+    return $role === 'member' ? 'limited_member' : $role;
+}
+
+function role_route_prefix(): string
+{
+    return app_user_role() === 'admin' ? 'admin' : 'member';
 }
 
 function csrf_token(): string
@@ -85,8 +97,18 @@ function require_auth(): void
 function require_role(string $role): void
 {
     require_auth();
-    $currentRole = (string)(app_user()['role'] ?? '');
-    if ($currentRole !== $role) {
+    if (app_user_role() !== $role) {
+        http_response_code(403);
+        echo '403 Forbidden';
+        exit;
+    }
+}
+
+function require_any_role(array $roles): void
+{
+    require_auth();
+    $currentRole = app_user_role();
+    if (!in_array($currentRole, $roles, true)) {
         http_response_code(403);
         echo '403 Forbidden';
         exit;
@@ -195,61 +217,65 @@ switch ($route) {
         require_role('admin');
         $adminController->settings();
         break;
+    case 'admin/users':
+        require_role('admin');
+        $adminController->users();
+        break;
 
     case 'member/dashboard':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->dashboard();
         break;
     case 'member/add-person':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->addPerson();
         break;
     case 'member/edit-person':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->editPerson();
         break;
     case 'member/add-marriage':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->addMarriage();
         break;
     case 'member/edit-marriage':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->editMarriage();
         break;
     case 'member/person-search':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $personController->search();
         break;
     case 'member/family-list':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->familyList();
         break;
     case 'member/tree-view':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->treeView();
         break;
     case 'member/ancestors':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->ancestors();
         break;
     case 'member/descendants':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->descendants();
         break;
     case 'member/relationship-finder':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->relationshipFinder();
         break;
     case 'member/branches':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->branches();
         break;
     case 'member/reports':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->reports();
         break;
     case 'member/settings':
-        require_role('member');
+        require_any_role(['limited_member', 'full_editor']);
         $memberController->settings();
         break;
 

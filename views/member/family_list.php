@@ -36,7 +36,11 @@
         <td><?= htmlspecialchars((string)($item['current_location'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= htmlspecialchars((string)($item['native_location'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         <td>
-          <a class="btn btn-sm btn-outline-primary" href="/index.php?route=member/edit-person&id=<?= (int)$item['person_id'] ?>">Edit</a>
+          <?php if (!empty($item['can_edit'])): ?>
+            <a class="btn btn-sm btn-outline-primary" href="/index.php?route=member/edit-person&id=<?= (int)$item['person_id'] ?>">Edit</a>
+          <?php else: ?>
+            <span class="text-muted small">Read Only</span>
+          <?php endif; ?>
         </td>
       </tr>
       <?php endforeach; ?>

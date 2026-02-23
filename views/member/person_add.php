@@ -1,4 +1,5 @@
 <?php include __DIR__ . '/../layouts/app_start.php'; ?>
+<?php $isLimited = app_user_role() === 'limited_member'; ?>
 <h1 class="h4 mb-3">Add Family Member</h1>
 
 <?php if (!empty($error)): ?>
@@ -125,8 +126,10 @@
         <option value="child">Child</option>
         <option value="father">Father</option>
         <option value="mother">Mother</option>
+        <?php if (!$isLimited): ?>
         <option value="brother">Brother</option>
         <option value="sister">Sister</option>
+        <?php endif; ?>
         <option value="grandfather">Grandfather</option>
         <option value="grandmother">Grandmother</option>
         <option value="spouse">Spouse</option>

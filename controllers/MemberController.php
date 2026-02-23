@@ -55,6 +55,11 @@ final class MemberController extends BaseController
             header('Location: /index.php?route=member/family-list');
             exit;
         }
+        if (!$this->canEditPerson($person)) {
+            $_SESSION['flash_error'] = 'You cannot edit this record.';
+            header('Location: /index.php?route=member/family-list');
+            exit;
+        }
 
         $this->render('member/person_edit', [
             'title' => 'Edit Person',
@@ -114,9 +119,13 @@ final class MemberController extends BaseController
     public function familyList(): void
     {
         $items = $this->people->all(500);
+        $currentUserId = (int)(app_user()['user_id'] ?? 0);
+        $currentRole = app_user_role();
         $povId = current_pov_id();
         foreach ($items as &$item) {
             $item['age'] = $this->calculateAge($item);
+            $item['can_edit'] = $currentRole === 'admin'
+                || ((int)($item['is_locked'] ?? 0) !== 1 && (int)($item['created_by'] ?? 0) === $currentUserId);
             if ($povId > 0) {
                 $rel = $this->engine->resolve($povId, (int)$item['person_id']);
                 $en = trim((string)($rel['title_en'] ?? 'Unknown'));
@@ -248,6 +257,9 @@ final class MemberController extends BaseController
             exit;
         }
 
+        $currentRole = app_user_role();
+        $currentUserId = (int)(app_user()['user_id'] ?? 0);
+
         $existingPersonId = (int)($_POST['existing_person_id'] ?? 0);
         $referencePersonId = (int)($_POST['reference_person_id'] ?? 0);
         $fullName = trim((string)($_POST['full_name'] ?? ''));
@@ -276,6 +288,9 @@ final class MemberController extends BaseController
             $gender = 'unknown';
         }
         if (!in_array($relationType, ['none', 'child', 'spouse', 'father', 'mother', 'brother', 'sister', 'grandfather', 'grandmother'], true)) {
+            $relationType = 'none';
+        }
+        if ($currentRole === 'limited_member' && in_array($relationType, ['brother', 'sister'], true)) {
             $relationType = 'none';
         }
         if (!in_array($parentType, ['father', 'mother', 'adoptive', 'step'], true)) {
@@ -313,6 +328,10 @@ final class MemberController extends BaseController
                     ':mother_id' => null,
                     ':spouse_id' => null,
                     ':branch_id' => null,
+                    ':created_by' => $currentUserId > 0 ? $currentUserId : null,
+                    ':editable_scope' => 'self_branch',
+                    ':is_locked' => 0,
+                    ':is_deleted' => 0,
                 ]);
             }
 
@@ -356,6 +375,11 @@ final class MemberController extends BaseController
         $person = $this->people->findById($id);
         if ($person === null) {
             $_SESSION['flash_error'] = 'Person not found.';
+            header('Location: /index.php?route=member/family-list');
+            exit;
+        }
+        if (!$this->canEditPerson($person)) {
+            $_SESSION['flash_error'] = 'You cannot edit this record.';
             header('Location: /index.php?route=member/family-list');
             exit;
         }
@@ -816,5 +840,18 @@ final class MemberController extends BaseController
         }
         $n = $distance - 2;
         return $n . 'th ' . ($isFemale ? 'Great Grandmother' : 'Great Grandfather');
+    }
+
+    private function canEditPerson(array $person): bool
+    {
+        $role = app_user_role();
+        if ($role === 'admin') {
+            return true;
+        }
+        if ((int)($person['is_locked'] ?? 0) === 1) {
+            return false;
+        }
+        $currentUserId = (int)(app_user()['user_id'] ?? 0);
+        return $currentUserId > 0 && (int)($person['created_by'] ?? 0) === $currentUserId;
     }
 }

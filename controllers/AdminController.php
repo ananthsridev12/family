@@ -6,6 +6,7 @@ final class AdminController extends BaseController
     private PersonModel $people;
     private BranchModel $branchesModel;
     private RelationshipEngine $engine;
+    private UserModel $users;
 
     public function __construct(PDO $db)
     {
@@ -13,6 +14,7 @@ final class AdminController extends BaseController
         $this->people = new PersonModel($db);
         $this->branchesModel = new BranchModel($db);
         $this->engine = new RelationshipEngine($db);
+        $this->users = new UserModel($db);
     }
 
     public function dashboard(): void
@@ -143,6 +145,84 @@ final class AdminController extends BaseController
         }
 
         $this->render('admin/settings', ['title' => 'Settings']);
+    }
+
+    public function users(): void
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+                $_SESSION['flash_error'] = 'Invalid CSRF token.';
+                header('Location: /index.php?route=admin/users');
+                exit;
+            }
+
+            $action = (string)($_POST['action'] ?? 'create');
+            if ($action === 'update') {
+                $userId = (int)($_POST['user_id'] ?? 0);
+                $role = (string)($_POST['role'] ?? 'limited_member');
+                $isActive = isset($_POST['is_active']);
+
+                if ($userId > 0 && $userId !== (int)(app_user()['user_id'] ?? 0)) {
+                    if (!in_array($role, ['admin', 'full_editor', 'limited_member'], true)) {
+                        $role = 'limited_member';
+                    }
+                    $this->users->updateRoleStatus($userId, $role, $isActive);
+                }
+                header('Location: /index.php?route=admin/users');
+                exit;
+            }
+
+            $name = trim((string)($_POST['name'] ?? ''));
+            $email = trim((string)($_POST['email'] ?? ''));
+            $username = trim((string)($_POST['username'] ?? ''));
+            $password = (string)($_POST['password'] ?? '');
+            $role = (string)($_POST['role'] ?? 'limited_member');
+            $isActive = isset($_POST['is_active']) ? 1 : 0;
+
+            if ($name === '' || $email === '' || $password === '') {
+                $_SESSION['flash_error'] = 'Name, email, and password are required.';
+                header('Location: /index.php?route=admin/users');
+                exit;
+            }
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $_SESSION['flash_error'] = 'Invalid email address.';
+                header('Location: /index.php?route=admin/users');
+                exit;
+            }
+            if (!in_array($role, ['admin', 'full_editor', 'limited_member'], true)) {
+                $role = 'limited_member';
+            }
+
+            if ($username === '') {
+                $username = strstr($email, '@', true) ?: $email;
+            }
+
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+            try {
+                $this->users->create([
+                    ':username' => $username,
+                    ':name' => $name,
+                    ':email' => $email,
+                    ':password_hash' => $hash,
+                    ':role' => $role,
+                    ':is_active' => $isActive,
+                    ':person_id' => null,
+                ]);
+                $_SESSION['flash_success'] = 'User created.';
+            } catch (Throwable $e) {
+                $_SESSION['flash_error'] = 'Failed to create user: ' . $e->getMessage();
+            }
+            header('Location: /index.php?route=admin/users');
+            exit;
+        }
+
+        $this->render('admin/users', [
+            'title' => 'Users',
+            'rows' => $this->users->list(200),
+            'error' => $_SESSION['flash_error'] ?? null,
+            'success' => $_SESSION['flash_success'] ?? null,
+        ]);
+        unset($_SESSION['flash_error'], $_SESSION['flash_success']);
     }
 
     private function buildAncestors(int $personId, int $maxDepth): array

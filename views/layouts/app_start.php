@@ -1,7 +1,7 @@
 <?php include __DIR__ . '/header.php'; ?>
 <div class="container-fluid">
   <div class="row">
-    <aside class="col-lg-2 p-0 bg-light min-vh-100">
+    <aside class="col-lg-2 p-0 bg-light app-sidebar">
       <?php include __DIR__ . '/sidebar.php'; ?>
     </aside>
     <main class="col-lg-10 p-4">

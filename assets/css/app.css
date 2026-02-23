@@ -9,6 +9,16 @@ body {
   color: var(--ft-text);
 }
 
+.app-sidebar {
+  min-height: auto;
+}
+
+@media (min-width: 992px) {
+  .app-sidebar {
+    min-height: 100vh;
+  }
+}
+
 .nav-link {
   color: #2d3c55;
 }
