@@ -15,10 +15,13 @@ final class UserModel
         $stmt = $this->db->prepare(
             'SELECT user_id, username, name, email, password_hash, role, is_active, person_id
              FROM users
-             WHERE email = :login OR username = :login
+             WHERE email = :login_email OR username = :login_username
              LIMIT 1'
         );
-        $stmt->execute([':login' => $login]);
+        $stmt->execute([
+            ':login_email' => $login,
+            ':login_username' => $login,
+        ]);
         $row = $stmt->fetch();
         return $row ?: null;
     }
