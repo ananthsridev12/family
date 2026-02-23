@@ -970,6 +970,8 @@ final class RelationshipEngine
             'cousin_level' => $cousinLevel,
             'removed' => $removed,
             'generation_difference' => $generationDifference,
+            // Distance from parent/child baseline: grand*=1, great-grand*=2, etc.
+            'generation_level' => (abs($generationDifference) >= 2) ? (abs($generationDifference) - 1) : null,
             'side' => $side,
             'lca_id' => $lcaId,
             'connection_depth' => $connectionDepth,
