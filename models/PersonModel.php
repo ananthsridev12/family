@@ -43,12 +43,15 @@ final class PersonModel
             $stmt = $this->db->prepare(
                 'SELECT person_id, full_name
                  FROM persons
-                 WHERE (father_id = :id OR mother_id = :id)
+                 WHERE (father_id = :father_id OR mother_id = :mother_id)
                    AND (is_deleted = 0 OR is_deleted IS NULL)
                  ORDER BY full_name ASC
                  LIMIT 100'
             );
-            $stmt->execute([':id' => $personId]);
+            $stmt->execute([
+                ':father_id' => $personId,
+                ':mother_id' => $personId,
+            ]);
             return $stmt->fetchAll();
         }
 
