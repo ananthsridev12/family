@@ -322,7 +322,10 @@ final class AdminController extends BaseController
                 }
                 $firstEdge = $depth === 0 ? strtolower((string)$p['link']) : (string)($node['first_edge'] ?? 'direct');
                 $sideLabel = $firstEdge === 'father' ? 'Paternal' : ($firstEdge === 'mother' ? 'Maternal' : 'Any');
-                if ($side === 'any' || ($side === 'paternal' && $firstEdge === 'father') || ($side === 'maternal' && $firstEdge === 'mother')) {
+                $matchesSide = $side === 'any'
+                    || ($side === 'paternal' && $firstEdge === 'father')
+                    || ($side === 'maternal' && $firstEdge === 'mother');
+                if ($matchesSide) {
                     $rows[] = [
                         'generation' => $depth + 1,
                         'link' => $this->ancestorLabel($depth + 1, (string)$pp['gender']),
@@ -332,7 +335,9 @@ final class AdminController extends BaseController
                         'gender' => (string)$pp['gender'],
                     ];
                 }
-                $queue[] = ['id' => $pid, 'depth' => $depth + 1, 'first_edge' => $firstEdge];
+                if ($matchesSide) {
+                    $queue[] = ['id' => $pid, 'depth' => $depth + 1, 'first_edge' => $firstEdge];
+                }
             }
         }
         return $rows;

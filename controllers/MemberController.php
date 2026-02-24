@@ -789,7 +789,10 @@ final class MemberController extends BaseController
                 $distance = $depth + 1;
                 $childFirstEdge = $depth === 0 ? strtolower((string)$p['link']) : $firstEdge;
                 $sideLabel = $childFirstEdge === 'father' ? 'Paternal' : ($childFirstEdge === 'mother' ? 'Maternal' : 'Any');
-                if ($side === 'any' || ($side === 'paternal' && $childFirstEdge === 'father') || ($side === 'maternal' && $childFirstEdge === 'mother')) {
+                $matchesSide = $side === 'any'
+                    || ($side === 'paternal' && $childFirstEdge === 'father')
+                    || ($side === 'maternal' && $childFirstEdge === 'mother');
+                if ($matchesSide) {
                     $rows[] = [
                         'generation' => $distance,
                         'link' => $this->ancestorLabel($distance, (string)$pp['gender']),
@@ -799,7 +802,9 @@ final class MemberController extends BaseController
                         'gender' => (string)$pp['gender'],
                     ];
                 }
-                $queue[] = ['id' => $pid, 'depth' => $distance, 'first_edge' => $childFirstEdge];
+                if ($matchesSide) {
+                    $queue[] = ['id' => $pid, 'depth' => $distance, 'first_edge' => $childFirstEdge];
+                }
             }
         }
         return $rows;
