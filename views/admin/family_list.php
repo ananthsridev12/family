@@ -19,6 +19,7 @@
         <th>Gender</th>
         <th>Age</th>
         <th>Birth Year</th>
+        <th>Relationship</th>
         <th>Created By</th>
         <th>Locked</th>
         <th>Action</th>
@@ -32,6 +33,7 @@
         <td><?= htmlspecialchars((string)$item['gender'], ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= $item['age'] === null ? '-' : (int)$item['age'] ?></td>
         <td><?= htmlspecialchars((string)($item['birth_year'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+        <td><?= htmlspecialchars((string)($item['relationship_status'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= (int)($item['created_by'] ?? 0) ?></td>
         <td><?= (int)($item['is_locked'] ?? 0) === 1 ? 'Yes' : 'No' ?></td>
         <td>

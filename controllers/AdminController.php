@@ -30,8 +30,17 @@ final class AdminController extends BaseController
     public function familyList(): void
     {
         $items = $this->people->all(500);
+        $povId = current_pov_id();
         foreach ($items as &$item) {
             $item['age'] = $this->calculateAge($item);
+            if ($povId > 0) {
+                $rel = $this->engine->resolve($povId, (int)$item['person_id']);
+                $en = trim((string)($rel['title_en'] ?? 'Unknown'));
+                $ta = trim((string)($rel['title_ta'] ?? ''));
+                $item['relationship_status'] = ($ta !== '' && $ta !== $en) ? ($en . ' / ' . $ta) : $en;
+            } else {
+                $item['relationship_status'] = '-';
+            }
         }
         unset($item);
         $this->render('admin/family_list', [
