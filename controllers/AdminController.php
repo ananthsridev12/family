@@ -29,7 +29,18 @@ final class AdminController extends BaseController
 
     public function familyList(): void
     {
-        $this->render('admin/family_list', ['title' => 'Family List']);
+        $items = $this->people->all(500);
+        foreach ($items as &$item) {
+            $item['age'] = $this->calculateAge($item);
+        }
+        unset($item);
+        $this->render('admin/family_list', [
+            'title' => 'Family List',
+            'items' => $items,
+            'error' => $_SESSION['flash_error'] ?? null,
+            'success' => $_SESSION['flash_success'] ?? null,
+        ]);
+        unset($_SESSION['flash_error'], $_SESSION['flash_success']);
     }
 
     public function treeView(): void
@@ -46,13 +57,18 @@ final class AdminController extends BaseController
     public function ancestors(): void
     {
         $personId = (int)($_GET['person_id'] ?? current_pov_id());
+        $side = (string)($_GET['side'] ?? 'any');
+        if (!in_array($side, ['any', 'paternal', 'maternal'], true)) {
+            $side = 'any';
+        }
         $person = $personId > 0 ? $this->people->findById($personId) : null;
-        $rows = $person ? $this->buildAncestors($personId, 6) : [];
+        $rows = $person ? $this->buildAncestors($personId, 6, $side) : [];
         $this->render('admin/ancestors', [
             'title' => 'Ancestors',
             'route_prefix' => 'admin',
             'person_id' => $personId,
             'person_name' => (string)($person['full_name'] ?? ''),
+            'side' => $side,
             'rows' => $rows,
         ]);
     }
@@ -145,6 +161,27 @@ final class AdminController extends BaseController
         }
 
         $this->render('admin/settings', ['title' => 'Settings']);
+    }
+
+    public function deletePerson(): void
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST' || !verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(400);
+            echo 'Invalid request';
+            exit;
+        }
+
+        $id = (int)($_POST['person_id'] ?? 0);
+        if ($id <= 0) {
+            $_SESSION['flash_error'] = 'Invalid person id.';
+            header('Location: /index.php?route=admin/family-list');
+            exit;
+        }
+
+        $this->people->softDelete($id);
+        $_SESSION['flash_success'] = 'Person deleted.';
+        header('Location: /index.php?route=admin/family-list');
+        exit;
     }
 
     public function users(): void
@@ -253,7 +290,7 @@ final class AdminController extends BaseController
         unset($_SESSION['flash_error'], $_SESSION['flash_success']);
     }
 
-    private function buildAncestors(int $personId, int $maxDepth): array
+    private function buildAncestors(int $personId, int $maxDepth, string $side = 'any'): array
     {
         $rows = [];
         $queue = [['id' => $personId, 'depth' => 0]];
@@ -283,14 +320,17 @@ final class AdminController extends BaseController
                 if ($pp === null) {
                     continue;
                 }
-                $rows[] = [
-                    'generation' => $depth + 1,
-                    'link' => $this->ancestorLabel($depth + 1, (string)$pp['gender']),
-                    'person_id' => $pid,
-                    'name' => (string)$pp['full_name'],
-                    'gender' => (string)$pp['gender'],
-                ];
-                $queue[] = ['id' => $pid, 'depth' => $depth + 1];
+                $firstEdge = $depth === 0 ? strtolower((string)$p['link']) : (string)($node['first_edge'] ?? 'direct');
+                if ($side === 'any' || ($side === 'paternal' && $firstEdge === 'father') || ($side === 'maternal' && $firstEdge === 'mother')) {
+                    $rows[] = [
+                        'generation' => $depth + 1,
+                        'link' => $this->ancestorLabel($depth + 1, (string)$pp['gender']),
+                        'person_id' => $pid,
+                        'name' => (string)$pp['full_name'],
+                        'gender' => (string)$pp['gender'],
+                    ];
+                }
+                $queue[] = ['id' => $pid, 'depth' => $depth + 1, 'first_edge' => $firstEdge];
             }
         }
         return $rows;
@@ -340,5 +380,28 @@ final class AdminController extends BaseController
         }
         $n = $distance - 2;
         return $n . 'th ' . ($isFemale ? 'Great Grandmother' : 'Great Grandfather');
+    }
+
+    private function calculateAge(array $person): ?int
+    {
+        $dobRaw = trim((string)($person['date_of_birth'] ?? ''));
+        $dodRaw = trim((string)($person['date_of_death'] ?? ''));
+        if ($dobRaw !== '') {
+            try {
+                $dob = new DateTimeImmutable($dobRaw);
+                $end = $dodRaw !== '' ? new DateTimeImmutable($dodRaw) : new DateTimeImmutable('today');
+                if ($end < $dob) {
+                    return null;
+                }
+                return $dob->diff($end)->y;
+            } catch (Throwable) {
+                return null;
+            }
+        }
+        $by = (int)($person['birth_year'] ?? 0);
+        if ($by > 0) {
+            return max(0, (int)date('Y') - $by);
+        }
+        return null;
     }
 }

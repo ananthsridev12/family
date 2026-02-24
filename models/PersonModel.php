@@ -159,6 +159,12 @@ final class PersonModel
         $stmt->execute($data);
     }
 
+    public function softDelete(int $id): void
+    {
+        $stmt = $this->db->prepare('UPDATE persons SET is_deleted = 1 WHERE person_id = :id');
+        $stmt->execute([':id' => $id]);
+    }
+
     private function supportsParentColumns(): bool
     {
         if ($this->hasFatherColumn !== null && $this->hasMotherColumn !== null) {

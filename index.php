@@ -189,6 +189,10 @@ switch ($route) {
         require_role('admin');
         $adminController->familyList();
         break;
+    case 'admin/delete-person':
+        require_role('admin');
+        $adminController->deletePerson();
+        break;
     case 'admin/tree-view':
         require_role('admin');
         $adminController->treeView();

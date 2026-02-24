@@ -9,7 +9,16 @@
     <input type="hidden" id="person_id" name="person_id" value="<?= (int)($person_id ?? 0) ?>">
     <div class="list-group mt-1 search-results"></div>
   </div>
-  <div class="col-md-4 d-flex align-items-end">
+  <div class="col-md-2">
+    <label class="form-label">Line</label>
+    <?php $selectedSide = (string)($side ?? 'any'); ?>
+    <select class="form-select" name="side">
+      <option value="any" <?= $selectedSide === 'any' ? 'selected' : '' ?>>Any</option>
+      <option value="paternal" <?= $selectedSide === 'paternal' ? 'selected' : '' ?>>Paternal</option>
+      <option value="maternal" <?= $selectedSide === 'maternal' ? 'selected' : '' ?>>Maternal</option>
+    </select>
+  </div>
+  <div class="col-md-2 d-flex align-items-end">
     <button class="btn btn-primary" type="submit">Load Ancestors</button>
   </div>
 </form>

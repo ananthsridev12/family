@@ -154,16 +154,21 @@ final class MemberController extends BaseController
     public function ancestors(): void
     {
         $personId = (int)($_GET['person_id'] ?? current_pov_id());
+        $side = (string)($_GET['side'] ?? 'any');
+        if (!in_array($side, ['any', 'paternal', 'maternal'], true)) {
+            $side = 'any';
+        }
         $person = $personId > 0 ? $this->people->findById($personId) : null;
         $rows = [];
         if ($person !== null) {
-            $rows = $this->buildAncestors($personId, 6);
+            $rows = $this->buildAncestors($personId, 6, $side);
         }
         $this->render('member/ancestors', [
             'title' => 'Ancestors',
             'route_prefix' => 'member',
             'person_id' => $personId,
             'person_name' => (string)($person['full_name'] ?? ''),
+            'side' => $side,
             'rows' => $rows,
         ]);
     }
@@ -750,7 +755,7 @@ final class MemberController extends BaseController
         ]);
     }
 
-    private function buildAncestors(int $personId, int $maxDepth): array
+    private function buildAncestors(int $personId, int $maxDepth, string $side = 'any'): array
     {
         $rows = [];
         $queue = [['id' => $personId, 'depth' => 0, 'first_edge' => 'direct']];
@@ -783,13 +788,15 @@ final class MemberController extends BaseController
                 }
                 $distance = $depth + 1;
                 $childFirstEdge = $depth === 0 ? strtolower((string)$p['link']) : $firstEdge;
-                $rows[] = [
-                    'generation' => $distance,
-                    'link' => $this->ancestorLabel($distance, (string)$pp['gender']),
-                    'person_id' => $pid,
-                    'name' => (string)$pp['full_name'],
-                    'gender' => (string)$pp['gender'],
-                ];
+                if ($side === 'any' || ($side === 'paternal' && $childFirstEdge === 'father') || ($side === 'maternal' && $childFirstEdge === 'mother')) {
+                    $rows[] = [
+                        'generation' => $distance,
+                        'link' => $this->ancestorLabel($distance, (string)$pp['gender']),
+                        'person_id' => $pid,
+                        'name' => (string)$pp['full_name'],
+                        'gender' => (string)$pp['gender'],
+                    ];
+                }
                 $queue[] = ['id' => $pid, 'depth' => $distance, 'first_edge' => $childFirstEdge];
             }
         }
