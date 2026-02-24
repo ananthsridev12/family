@@ -26,12 +26,13 @@
 <div class="table-responsive">
   <table class="table table-sm table-striped">
     <thead>
-      <tr><th>Generation</th><th>Link</th><th>ID</th><th>Name</th><th>Gender</th></tr>
+      <tr><th>Generation</th><th>Line</th><th>Link</th><th>ID</th><th>Name</th><th>Gender</th></tr>
     </thead>
     <tbody>
       <?php foreach (($rows ?? []) as $r): ?>
       <tr>
         <td><?= (int)$r['generation'] ?></td>
+        <td><?= htmlspecialchars((string)($r['side'] ?? 'Any'), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= htmlspecialchars((string)$r['link'], ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= (int)$r['person_id'] ?></td>
         <td><?= htmlspecialchars((string)$r['name'], ENT_QUOTES, 'UTF-8') ?></td>
@@ -39,7 +40,7 @@
       </tr>
       <?php endforeach; ?>
       <?php if (empty($rows ?? [])): ?>
-      <tr><td colspan="5" class="text-muted">No ancestor data for selected person.</td></tr>
+      <tr><td colspan="6" class="text-muted">No ancestor data for selected person.</td></tr>
       <?php endif; ?>
     </tbody>
   </table>

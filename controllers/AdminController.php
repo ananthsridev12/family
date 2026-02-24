@@ -293,7 +293,7 @@ final class AdminController extends BaseController
     private function buildAncestors(int $personId, int $maxDepth, string $side = 'any'): array
     {
         $rows = [];
-        $queue = [['id' => $personId, 'depth' => 0]];
+        $queue = [['id' => $personId, 'depth' => 0, 'first_edge' => 'direct']];
         $seen = [];
         while (!empty($queue)) {
             $node = array_shift($queue);
@@ -321,10 +321,12 @@ final class AdminController extends BaseController
                     continue;
                 }
                 $firstEdge = $depth === 0 ? strtolower((string)$p['link']) : (string)($node['first_edge'] ?? 'direct');
+                $sideLabel = $firstEdge === 'father' ? 'Paternal' : ($firstEdge === 'mother' ? 'Maternal' : 'Any');
                 if ($side === 'any' || ($side === 'paternal' && $firstEdge === 'father') || ($side === 'maternal' && $firstEdge === 'mother')) {
                     $rows[] = [
                         'generation' => $depth + 1,
                         'link' => $this->ancestorLabel($depth + 1, (string)$pp['gender']),
+                        'side' => $sideLabel,
                         'person_id' => $pid,
                         'name' => (string)$pp['full_name'],
                         'gender' => (string)$pp['gender'],

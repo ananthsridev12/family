@@ -129,7 +129,16 @@
     button.addEventListener('click', function () {
       var rootId = rootInput.value.trim();
       container.innerHTML = '';
+      if (!rootId && rootDisplay) {
+        var raw = rootDisplay.value.trim();
+        var match = raw.match(/#(\\d+)/) || raw.match(/\\b(\\d+)\\b/);
+        if (match) {
+          rootId = match[1];
+          rootInput.value = rootId;
+        }
+      }
       if (!rootId) {
+        container.innerHTML = '<div class="text-muted">Select a person from search or enter an ID.</div>';
         return;
       }
       var root = { id: rootId, name: (rootDisplay && rootDisplay.value.trim()) ? rootDisplay.value.trim() : 'Selected Person' };
