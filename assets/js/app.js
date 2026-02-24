@@ -77,7 +77,10 @@
 
     toggle.addEventListener('click', function () {
       if (!childrenWrap.dataset.loaded) {
-        fetch('/index.php?route=person/children&person_id=' + encodeURIComponent(person.id), {
+        var containerEl = childrenWrap.closest('#treeContainer');
+        var route = (containerEl && containerEl.getAttribute('data-children-route')) || '/index.php?route=person/children';
+        var url = route + '&person_id=' + encodeURIComponent(person.id);
+        fetch(url, {
           headers: { 'Accept': 'application/json' }
         })
           .then(function (res) { return res.json(); })

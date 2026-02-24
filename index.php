@@ -176,6 +176,14 @@ switch ($route) {
         require_auth();
         $personController->children();
         break;
+    case 'admin/person-children':
+        require_role('admin');
+        $personController->children();
+        break;
+    case 'member/person-children':
+        require_any_role(['limited_member', 'full_editor']);
+        $personController->children();
+        break;
 
     case 'admin/dashboard':
         require_role('admin');

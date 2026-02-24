@@ -148,6 +148,7 @@ final class MemberController extends BaseController
             'title' => 'Tree View',
             'root_id' => $rootId,
             'root_name' => (string)($root['full_name'] ?? ''),
+            'route_prefix' => 'member',
         ]);
     }
 

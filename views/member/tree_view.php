@@ -12,6 +12,7 @@
     <button id="loadTreeBtn" class="btn btn-primary">Load Tree (AJAX)</button>
   </div>
 </div>
-<div id="treeContainer" class="mt-4"></div>
+<?php $routePrefix = (string)($route_prefix ?? 'member'); ?>
+<div id="treeContainer" class="mt-4" data-children-route="/index.php?route=<?= htmlspecialchars($routePrefix . '/person-children', ENT_QUOTES, 'UTF-8') ?>"></div>
 <p class="text-muted mb-0">Tip: choose person from search and click load. Expand nodes with +. Data loads via AJAX.</p>
 <?php include __DIR__ . '/../layouts/app_end.php'; ?>
