@@ -4,12 +4,12 @@ RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-RewriteRule ^$ index.php?route=home [QSA,L]
-RewriteRule ^about/?$ index.php?route=about [QSA,L]
-RewriteRule ^how-it-works/?$ index.php?route=how-it-works [QSA,L]
-RewriteRule ^features/?$ index.php?route=features [QSA,L]
-RewriteRule ^tamil-relationship-system/?$ index.php?route=tamil-relationship-system [QSA,L]
-RewriteRule ^contact/?$ index.php?route=contact [QSA,L]
+RewriteRule ^$ public/index.html [QSA,L]
+RewriteRule ^about/?$ public/about.html [QSA,L]
+RewriteRule ^how-it-works/?$ public/how-it-works.html [QSA,L]
+RewriteRule ^features/?$ public/features.html [QSA,L]
+RewriteRule ^tamil-relationship-system/?$ public/tamil-relationship-system.html [QSA,L]
+RewriteRule ^contact/?$ public/contact.html [QSA,L]
 
 RewriteRule ^admin/(dashboard|add-person|family-list|tree-view|ancestors|descendants|relationship-finder|branches|reports|settings)/?$ index.php?route=admin/$1 [QSA,L]
 RewriteRule ^member/(dashboard|add-person|edit-person|add-marriage|edit-marriage|person-search|family-list|tree-view|ancestors|descendants|relationship-finder|branches|reports|settings)/?$ index.php?route=member/$1 [QSA,L]
