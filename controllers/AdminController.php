@@ -98,6 +98,8 @@ final class AdminController extends BaseController
             }
             $fatherPersonId = (int)($_POST['father_person_id'] ?? 0);
             $motherPersonId = (int)($_POST['mother_person_id'] ?? 0);
+            $spousePersonId = (int)($_POST['spouse_person_id'] ?? 0);
+            $spouseMarriageDate = $this->normalizeDate($_POST['spouse_marriage_date'] ?? null);
 
             $this->people->update($id, [
                 ':full_name' => $fullName,
@@ -121,6 +123,9 @@ final class AdminController extends BaseController
             }
             if ($motherPersonId > 0) {
                 $this->linkParentChild($motherPersonId, $id, 'mother');
+            }
+            if ($spousePersonId > 0 && $spousePersonId !== $id) {
+                $this->applyRelation($id, $spousePersonId, 'spouse', 'father', null, $spouseMarriageDate);
             }
 
             $_SESSION['flash_success'] = 'Person updated.';
