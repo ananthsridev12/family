@@ -63,7 +63,7 @@ final class PersonModel
     {
         if ($this->supportsParentColumns()) {
             $stmt = $this->db->prepare(
-                'SELECT p.person_id, p.full_name,
+                'SELECT p.person_id, p.full_name, p.date_of_birth, p.birth_year, p.birth_order,
                         f.full_name AS father_name,
                         s.full_name AS spouse_name
                  FROM persons p
@@ -71,19 +71,19 @@ final class PersonModel
                  LEFT JOIN persons s ON s.person_id = p.spouse_id
                  WHERE (p.father_id = :father_id OR p.mother_id = :mother_id)
                    AND (p.is_deleted = 0 OR p.is_deleted IS NULL)
-                 ORDER BY p.full_name ASC
-                 LIMIT 100'
+                 LIMIT 200'
             );
             $stmt->execute([
                 ':father_id' => $personId,
                 ':mother_id' => $personId,
             ]);
-            return $stmt->fetchAll();
+            $rows = $stmt->fetchAll();
+            return $this->sortSiblings($rows);
         }
 
         if ($this->hasParentChildTable()) {
             $stmt = $this->db->prepare(
-                'SELECT p.person_id, p.full_name,
+                'SELECT p.person_id, p.full_name, p.date_of_birth, p.birth_year, p.birth_order,
                         f.full_name AS father_name,
                         s.full_name AS spouse_name
                  FROM parent_child pc
@@ -92,14 +92,83 @@ final class PersonModel
                  LEFT JOIN persons s ON s.person_id = p.spouse_id
                  WHERE pc.parent_id = :id
                    AND (p.is_deleted = 0 OR p.is_deleted IS NULL)
-                 ORDER BY p.full_name ASC
-                 LIMIT 100'
+                 LIMIT 200'
             );
             $stmt->execute([':id' => $personId]);
-            return $stmt->fetchAll();
+            $rows = $stmt->fetchAll();
+            return $this->sortSiblings($rows);
         }
 
         return [];
+    }
+
+    private function sortSiblings(array $rows): array
+    {
+        if ($rows === []) {
+            return $rows;
+        }
+
+        $hasDob = true;
+        $hasDobOrYear = true;
+        $hasYear = true;
+        $hasOrder = true;
+
+        foreach ($rows as $row) {
+            $dob = trim((string)($row['date_of_birth'] ?? ''));
+            $year = (int)($row['birth_year'] ?? 0);
+            $order = (int)($row['birth_order'] ?? 0);
+
+            if ($dob === '') {
+                $hasDob = false;
+            }
+            if ($dob === '' && $year <= 0) {
+                $hasDobOrYear = false;
+            }
+            if ($year <= 0) {
+                $hasYear = false;
+            }
+            if ($order <= 0) {
+                $hasOrder = false;
+            }
+        }
+
+        if ($hasDob) {
+            usort($rows, static function (array $a, array $b): int {
+                return strcmp((string)$a['date_of_birth'], (string)$b['date_of_birth']);
+            });
+            return $rows;
+        }
+
+        if ($hasDobOrYear) {
+            usort($rows, static function (array $a, array $b): int {
+                $aDob = trim((string)($a['date_of_birth'] ?? ''));
+                $bDob = trim((string)($b['date_of_birth'] ?? ''));
+                $aKey = $aDob !== '' ? $aDob : sprintf('%04d-01-01', (int)($a['birth_year'] ?? 0));
+                $bKey = $bDob !== '' ? $bDob : sprintf('%04d-01-01', (int)($b['birth_year'] ?? 0));
+                return strcmp($aKey, $bKey);
+            });
+            return $rows;
+        }
+
+        if ($hasYear) {
+            usort($rows, static function (array $a, array $b): int {
+                return (int)$a['birth_year'] <=> (int)$b['birth_year'];
+            });
+            return $rows;
+        }
+
+        if ($hasOrder) {
+            usort($rows, static function (array $a, array $b): int {
+                return (int)$a['birth_order'] <=> (int)$b['birth_order'];
+            });
+            return $rows;
+        }
+
+        usort($rows, static function (array $a, array $b): int {
+            return strcasecmp((string)$a['full_name'], (string)$b['full_name']);
+        });
+
+        return $rows;
     }
 
     public function branchMembers(int $branchId, int $limit = 200): array
