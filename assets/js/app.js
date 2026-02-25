@@ -76,7 +76,11 @@
     childrenWrap.hidden = true;
 
     toggle.addEventListener('click', function () {
+      if (childrenWrap.dataset.loading === '1') {
+        return;
+      }
       if (!childrenWrap.dataset.loaded) {
+        childrenWrap.dataset.loading = '1';
         var containerEl = childrenWrap.closest('#treeContainer');
         var route = (containerEl && containerEl.getAttribute('data-children-route')) || '/index.php?route=person/children';
         var url = route + '&person_id=' + encodeURIComponent(person.id);
@@ -88,10 +92,17 @@
             if (!Array.isArray(kids)) {
               kids = [];
             }
+            childrenWrap.innerHTML = '';
+            var seen = {};
             kids.forEach(function (kid) {
+              if (seen[kid.id]) {
+                return;
+              }
+              seen[kid.id] = true;
               childrenWrap.appendChild(createNode(kid, level + 1));
             });
             childrenWrap.dataset.loaded = '1';
+            childrenWrap.dataset.loading = '0';
             childrenWrap.hidden = kids.length === 0;
             if (kids.length === 0) {
               toggle.textContent = '.';
@@ -102,6 +113,7 @@
           })
           .catch(function () {
             childrenWrap.dataset.loaded = '1';
+            childrenWrap.dataset.loading = '0';
             childrenWrap.hidden = false;
             childrenWrap.innerHTML = '<div class="text-danger small">Failed to load children.</div>';
             toggle.textContent = '!';
