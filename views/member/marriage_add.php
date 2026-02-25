@@ -109,7 +109,7 @@
 
       clearTimeout(timer);
       timer = setTimeout(function () {
-        fetch('/index.php?route=member/person-search&q=' + encodeURIComponent(q))
+        fetch('/index.php?route=person/search&q=' + encodeURIComponent(q))
           .then(function (res) { return res.json(); })
           .then(function (data) {
             clearResults();
