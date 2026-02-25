@@ -247,7 +247,7 @@ switch ($route) {
         $memberController->dashboard();
         break;
     case 'member/add-person':
-        require_any_role(['limited_member', 'full_editor']);
+        require_any_role(['limited_member', 'full_editor', 'admin']);
         $memberController->addPerson();
         break;
     case 'member/edit-person':
