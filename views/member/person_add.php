@@ -146,8 +146,8 @@
       </select>
     </div>
 
-    <div class="col-md-3" id="birth_order_wrap" style="display:none;">
-      <label class="form-label">Child Birth Order</label>
+    <div class="col-md-3">
+      <label class="form-label">Birth Order</label>
       <input type="number" name="birth_order" class="form-control" min="1">
     </div>
 

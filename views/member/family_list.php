@@ -19,6 +19,7 @@
         <th>Gender</th>
         <th>Age</th>
         <th>Birth Year</th>
+        <th>Birth Order</th>
         <th>Relationship Status</th>
         <th>Marital</th>
         <th>Current Location</th>
@@ -41,6 +42,7 @@
         <td><?= htmlspecialchars((string)$item['gender'], ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= $item['age'] === null ? '-' : (int)$item['age'] ?></td>
         <td><?= htmlspecialchars((string)($item['birth_year'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+        <td><?= htmlspecialchars((string)($item['birth_order'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= htmlspecialchars((string)($item['relationship_status'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= htmlspecialchars((string)($item['marital_status'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= htmlspecialchars((string)($item['current_location'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>

@@ -23,6 +23,7 @@
         <th>Father</th>
         <th>Mother</th>
         <th>Spouse</th>
+        <th>Birth Order</th>
         <th>Created By</th>
         <th>Locked</th>
         <th>Action</th>
@@ -44,6 +45,7 @@
         <td><?= htmlspecialchars((string)($item['father_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= htmlspecialchars((string)($item['mother_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= htmlspecialchars((string)($item['spouse_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+        <td><?= htmlspecialchars((string)($item['birth_order'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= (int)($item['created_by'] ?? 0) ?></td>
         <td><?= (int)($item['is_locked'] ?? 0) === 1 ? 'Yes' : 'No' ?></td>
         <td>
