@@ -183,7 +183,9 @@
     var isChild = relation.value === 'child';
     var isSpouse = relation.value === 'spouse';
     parentWrap.style.display = isChild ? '' : 'none';
-    orderWrap.style.display = isChild ? '' : 'none';
+    if (orderWrap) {
+      orderWrap.style.display = isChild ? '' : 'none';
+    }
     spouseWrap.style.display = isSpouse ? '' : 'none';
   }
 
