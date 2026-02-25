@@ -118,7 +118,7 @@ final class MemberController extends BaseController
 
     public function familyList(): void
     {
-        $items = $this->people->all(500);
+        $items = $this->people->allWithRelations(500);
         $currentUserId = (int)(app_user()['user_id'] ?? 0);
         $currentRole = app_user_role();
         $povId = current_pov_id();
@@ -138,6 +138,26 @@ final class MemberController extends BaseController
         }
         unset($item);
         $this->render('member/family_list', ['title' => 'Family List', 'items' => $items]);
+    }
+
+    public function viewPerson(): void
+    {
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            $_SESSION['flash_error'] = 'Invalid person id.';
+            header('Location: /index.php?route=member/family-list');
+            exit;
+        }
+        $person = $this->people->findWithRelations($id);
+        if ($person === null) {
+            $_SESSION['flash_error'] = 'Person not found.';
+            header('Location: /index.php?route=member/family-list');
+            exit;
+        }
+        $this->render('member/person_view', [
+            'title' => 'Person Profile',
+            'person' => $person,
+        ]);
     }
 
     public function treeView(): void

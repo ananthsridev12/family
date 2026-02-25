@@ -29,7 +29,7 @@ final class AdminController extends BaseController
 
     public function familyList(): void
     {
-        $items = $this->people->all(500);
+        $items = $this->people->allWithRelations(500);
         $povId = current_pov_id();
         foreach ($items as &$item) {
             $item['age'] = $this->calculateAge($item);
@@ -50,6 +50,26 @@ final class AdminController extends BaseController
             'success' => $_SESSION['flash_success'] ?? null,
         ]);
         unset($_SESSION['flash_error'], $_SESSION['flash_success']);
+    }
+
+    public function viewPerson(): void
+    {
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            $_SESSION['flash_error'] = 'Invalid person id.';
+            header('Location: /index.php?route=admin/family-list');
+            exit;
+        }
+        $person = $this->people->findWithRelations($id);
+        if ($person === null) {
+            $_SESSION['flash_error'] = 'Person not found.';
+            header('Location: /index.php?route=admin/family-list');
+            exit;
+        }
+        $this->render('admin/person_view', [
+            'title' => 'Person Profile',
+            'person' => $person,
+        ]);
     }
 
     public function treeView(): void

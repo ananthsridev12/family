@@ -20,6 +20,9 @@
         <th>Age</th>
         <th>Birth Year</th>
         <th>Relationship</th>
+        <th>Father</th>
+        <th>Mother</th>
+        <th>Spouse</th>
         <th>Created By</th>
         <th>Locked</th>
         <th>Action</th>
@@ -29,11 +32,18 @@
       <?php foreach (($items ?? []) as $item): ?>
       <tr>
         <td><?= (int)$item['person_id'] ?></td>
-        <td><?= htmlspecialchars((string)$item['full_name'], ENT_QUOTES, 'UTF-8') ?></td>
+        <td>
+          <a href="/index.php?route=admin/person-view&id=<?= (int)$item['person_id'] ?>">
+            <?= htmlspecialchars((string)$item['full_name'], ENT_QUOTES, 'UTF-8') ?>
+          </a>
+        </td>
         <td><?= htmlspecialchars((string)$item['gender'], ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= $item['age'] === null ? '-' : (int)$item['age'] ?></td>
         <td><?= htmlspecialchars((string)($item['birth_year'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= htmlspecialchars((string)($item['relationship_status'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
+        <td><?= htmlspecialchars((string)($item['father_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+        <td><?= htmlspecialchars((string)($item['mother_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+        <td><?= htmlspecialchars((string)($item['spouse_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= (int)($item['created_by'] ?? 0) ?></td>
         <td><?= (int)($item['is_locked'] ?? 0) === 1 ? 'Yes' : 'No' ?></td>
         <td>

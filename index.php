@@ -197,6 +197,10 @@ switch ($route) {
         require_role('admin');
         $adminController->familyList();
         break;
+    case 'admin/person-view':
+        require_role('admin');
+        $adminController->viewPerson();
+        break;
     case 'admin/delete-person':
         require_role('admin');
         $adminController->deletePerson();
@@ -261,6 +265,10 @@ switch ($route) {
     case 'member/family-list':
         require_any_role(['limited_member', 'full_editor']);
         $memberController->familyList();
+        break;
+    case 'member/person-view':
+        require_any_role(['limited_member', 'full_editor']);
+        $memberController->viewPerson();
         break;
     case 'member/tree-view':
         require_any_role(['limited_member', 'full_editor']);

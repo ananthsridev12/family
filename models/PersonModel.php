@@ -37,15 +37,41 @@ final class PersonModel
         return $stmt->fetchAll();
     }
 
+    public function searchByNameWithRelations(string $q, int $limit = 10): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT p.person_id, p.full_name, p.birth_year, p.spouse_id,
+                    f.full_name AS father_name,
+                    m.full_name AS mother_name,
+                    s.full_name AS spouse_name
+             FROM persons p
+             LEFT JOIN persons f ON f.person_id = p.father_id
+             LEFT JOIN persons m ON m.person_id = p.mother_id
+             LEFT JOIN persons s ON s.person_id = p.spouse_id
+             WHERE (p.is_deleted = 0 OR p.is_deleted IS NULL)
+               AND p.full_name LIKE :q
+             ORDER BY p.full_name ASC
+             LIMIT :limit'
+        );
+        $stmt->bindValue(':q', '%' . $q . '%', PDO::PARAM_STR);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
     public function childrenOf(int $personId): array
     {
         if ($this->supportsParentColumns()) {
             $stmt = $this->db->prepare(
-                'SELECT person_id, full_name
-                 FROM persons
-                 WHERE (father_id = :father_id OR mother_id = :mother_id)
-                   AND (is_deleted = 0 OR is_deleted IS NULL)
-                 ORDER BY full_name ASC
+                'SELECT p.person_id, p.full_name,
+                        f.full_name AS father_name,
+                        s.full_name AS spouse_name
+                 FROM persons p
+                 LEFT JOIN persons f ON f.person_id = p.father_id
+                 LEFT JOIN persons s ON s.person_id = p.spouse_id
+                 WHERE (p.father_id = :father_id OR p.mother_id = :mother_id)
+                   AND (p.is_deleted = 0 OR p.is_deleted IS NULL)
+                 ORDER BY p.full_name ASC
                  LIMIT 100'
             );
             $stmt->execute([
@@ -57,9 +83,13 @@ final class PersonModel
 
         if ($this->hasParentChildTable()) {
             $stmt = $this->db->prepare(
-                'SELECT p.person_id, p.full_name
+                'SELECT p.person_id, p.full_name,
+                        f.full_name AS father_name,
+                        s.full_name AS spouse_name
                  FROM parent_child pc
                  INNER JOIN persons p ON p.person_id = pc.child_id
+                 LEFT JOIN persons f ON f.person_id = p.father_id
+                 LEFT JOIN persons s ON s.person_id = p.spouse_id
                  WHERE pc.parent_id = :id
                    AND (p.is_deleted = 0 OR p.is_deleted IS NULL)
                  ORDER BY p.full_name ASC
@@ -100,6 +130,47 @@ final class PersonModel
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
+    }
+
+    public function allWithRelations(int $limit = 500): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT p.person_id, p.full_name, p.gender, p.date_of_birth, p.birth_year, p.date_of_death,
+                    p.current_location, p.native_location, p.spouse_id, p.father_id, p.mother_id, p.created_by, p.is_locked,
+                    f.full_name AS father_name,
+                    m.full_name AS mother_name,
+                    s.full_name AS spouse_name
+             FROM persons p
+             LEFT JOIN persons f ON f.person_id = p.father_id
+             LEFT JOIN persons m ON m.person_id = p.mother_id
+             LEFT JOIN persons s ON s.person_id = p.spouse_id
+             WHERE (p.is_deleted = 0 OR p.is_deleted IS NULL)
+             ORDER BY p.full_name ASC
+             LIMIT :limit'
+        );
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    public function findWithRelations(int $id): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT p.*,
+                    f.full_name AS father_name,
+                    m.full_name AS mother_name,
+                    s.full_name AS spouse_name
+             FROM persons p
+             LEFT JOIN persons f ON f.person_id = p.father_id
+             LEFT JOIN persons m ON m.person_id = p.mother_id
+             LEFT JOIN persons s ON s.person_id = p.spouse_id
+             WHERE p.person_id = :id
+               AND (p.is_deleted = 0 OR p.is_deleted IS NULL)
+             LIMIT 1'
+        );
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch();
+        return $row ?: null;
     }
 
     public function findByIds(array $ids): array

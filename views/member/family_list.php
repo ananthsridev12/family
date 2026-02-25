@@ -13,6 +13,9 @@
       <tr>
         <th>ID</th>
         <th>Name</th>
+        <th>Father</th>
+        <th>Mother</th>
+        <th>Spouse</th>
         <th>Gender</th>
         <th>Age</th>
         <th>Birth Year</th>
@@ -27,7 +30,14 @@
       <?php foreach (($items ?? []) as $item): ?>
       <tr>
         <td><?= (int)$item['person_id'] ?></td>
-        <td><?= htmlspecialchars((string)$item['full_name'], ENT_QUOTES, 'UTF-8') ?></td>
+        <td>
+          <a href="/index.php?route=member/person-view&id=<?= (int)$item['person_id'] ?>">
+            <?= htmlspecialchars((string)$item['full_name'], ENT_QUOTES, 'UTF-8') ?>
+          </a>
+        </td>
+        <td><?= htmlspecialchars((string)($item['father_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+        <td><?= htmlspecialchars((string)($item['mother_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+        <td><?= htmlspecialchars((string)($item['spouse_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= htmlspecialchars((string)$item['gender'], ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= $item['age'] === null ? '-' : (int)$item['age'] ?></td>
         <td><?= htmlspecialchars((string)($item['birth_year'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
