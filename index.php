@@ -255,11 +255,11 @@ switch ($route) {
         $memberController->editPerson();
         break;
     case 'member/add-marriage':
-        require_any_role(['limited_member', 'full_editor']);
+        require_any_role(['limited_member', 'full_editor', 'admin']);
         $memberController->addMarriage();
         break;
     case 'member/edit-marriage':
-        require_any_role(['limited_member', 'full_editor']);
+        require_any_role(['limited_member', 'full_editor', 'admin']);
         $memberController->editMarriage();
         break;
     case 'member/person-search':
