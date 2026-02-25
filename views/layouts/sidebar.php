@@ -11,9 +11,7 @@ $routePrefix = role_route_prefix();
     <ul class="nav flex-column">
       <li class="nav-item"><a class="nav-link" href="/index.php?route=<?= $routePrefix ?>/dashboard">Dashboard</a></li>
       <li class="nav-item"><a class="nav-link" href="/index.php?route=<?= $routePrefix ?>/add-person">Add Person</a></li>
-      <?php if ($role !== 'admin'): ?>
       <li class="nav-item"><a class="nav-link" href="/index.php?route=member/add-marriage">Add Marriage</a></li>
-      <?php endif; ?>
       <li class="nav-item"><a class="nav-link" href="/index.php?route=<?= $routePrefix ?>/family-list">Family List</a></li>
       <li class="nav-item"><a class="nav-link" href="/index.php?route=<?= $routePrefix ?>/tree-view">Tree View</a></li>
       <li class="nav-item"><a class="nav-link" href="/index.php?route=<?= $routePrefix ?>/ancestors">Ancestors</a></li>
