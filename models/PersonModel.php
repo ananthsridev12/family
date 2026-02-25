@@ -136,7 +136,7 @@ final class PersonModel
     {
         $stmt = $this->db->prepare(
             'SELECT p.person_id, p.full_name, p.gender, p.date_of_birth, p.birth_year, p.date_of_death,
-                    p.current_location, p.native_location, p.spouse_id, p.father_id, p.mother_id, p.created_by, p.is_locked,
+                    p.current_location, p.native_location, p.spouse_id, p.father_id, p.mother_id, p.birth_order, p.created_by, p.is_locked,
                     f.full_name AS father_name,
                     m.full_name AS mother_name,
                     s.full_name AS spouse_name
@@ -199,11 +199,11 @@ final class PersonModel
             'INSERT INTO persons (
                 full_name, gender, date_of_birth, birth_year, date_of_death, blood_group,
                 occupation, mobile, email, address, current_location, native_location, is_alive,
-                father_id, mother_id, spouse_id, branch_id, created_by, editable_scope, is_locked, is_deleted
+                father_id, mother_id, spouse_id, branch_id, birth_order, created_by, editable_scope, is_locked, is_deleted
              ) VALUES (
                 :full_name, :gender, :date_of_birth, :birth_year, :date_of_death, :blood_group,
                 :occupation, :mobile, :email, :address, :current_location, :native_location, :is_alive,
-                :father_id, :mother_id, :spouse_id, :branch_id, :created_by, :editable_scope, :is_locked, :is_deleted
+                :father_id, :mother_id, :spouse_id, :branch_id, :birth_order, :created_by, :editable_scope, :is_locked, :is_deleted
              )'
         );
         $stmt->execute($data);
@@ -219,6 +219,7 @@ final class PersonModel
                 gender = :gender,
                 date_of_birth = :date_of_birth,
                 birth_year = :birth_year,
+                birth_order = :birth_order,
                 date_of_death = :date_of_death,
                 blood_group = :blood_group,
                 occupation = :occupation,

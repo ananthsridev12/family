@@ -94,6 +94,7 @@ final class AdminController extends BaseController
                 ':gender' => $gender,
                 ':date_of_birth' => $this->normalizeDate($_POST['date_of_birth'] ?? null),
                 ':birth_year' => $this->normalizeInt($_POST['birth_year'] ?? null),
+                ':birth_order' => $this->normalizeInt($_POST['birth_order'] ?? null),
                 ':date_of_death' => $this->normalizeDate($_POST['date_of_death'] ?? null),
                 ':blood_group' => $this->nullableString($_POST['blood_group'] ?? null),
                 ':occupation' => $this->nullableString($_POST['occupation'] ?? null),

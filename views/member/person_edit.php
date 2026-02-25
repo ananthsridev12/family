@@ -43,6 +43,10 @@
       <input type="number" name="birth_year" class="form-control" value="<?= htmlspecialchars((string)($person['birth_year'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
     </div>
     <div class="col-md-3">
+      <label class="form-label">Birth Order</label>
+      <input type="number" name="birth_order" class="form-control" min="1" value="<?= htmlspecialchars((string)($person['birth_order'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+    </div>
+    <div class="col-md-3">
       <label class="form-label">Date of Death</label>
       <input type="date" name="date_of_death" class="form-control" value="<?= htmlspecialchars((string)($person['date_of_death'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
     </div>

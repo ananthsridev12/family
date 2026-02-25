@@ -15,6 +15,9 @@
     <div class="col-md-3">
       <strong>Birth Year:</strong> <?= htmlspecialchars((string)($person['birth_year'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
     </div>
+    <div class="col-md-3">
+      <strong>Birth Order:</strong> <?= htmlspecialchars((string)($person['birth_order'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+    </div>
     <div class="col-md-6">
       <strong>Father:</strong> <?= htmlspecialchars((string)($person['father_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
     </div>
