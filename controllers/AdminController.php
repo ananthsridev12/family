@@ -24,7 +24,17 @@ final class AdminController extends BaseController
 
     public function addPerson(): void
     {
-        $this->render('admin/person_add', ['title' => 'Add Person']);
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $this->createPersonFromAdmin();
+            return;
+        }
+
+        $this->render('member/person_add', [
+            'title' => 'Add Person',
+            'error' => $_SESSION['flash_error'] ?? null,
+            'success' => $_SESSION['flash_success'] ?? null,
+        ]);
+        unset($_SESSION['flash_error'], $_SESSION['flash_success']);
     }
 
     public function familyList(): void
@@ -152,6 +162,116 @@ final class AdminController extends BaseController
             'title' => 'Person Profile',
             'person' => $person,
         ]);
+    }
+
+    private function createPersonFromAdmin(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            $_SESSION['flash_error'] = 'Invalid CSRF token.';
+            header('Location: /index.php?route=admin/add-person');
+            exit;
+        }
+
+        $existingPersonId = (int)($_POST['existing_person_id'] ?? 0);
+        $referencePersonId = (int)($_POST['reference_person_id'] ?? 0);
+        $fullName = trim((string)($_POST['full_name'] ?? ''));
+        $gender = (string)($_POST['gender'] ?? 'unknown');
+        $dateOfBirth = $this->normalizeDate($_POST['date_of_birth'] ?? null);
+        $birthYear = $this->normalizeInt($_POST['birth_year'] ?? null);
+        $birthOrder = $this->normalizeInt($_POST['birth_order'] ?? null);
+        $dateOfDeath = $this->normalizeDate($_POST['date_of_death'] ?? null);
+        $currentLocation = $this->nullableString($_POST['current_location'] ?? null);
+        $nativeLocation = $this->nullableString($_POST['native_location'] ?? null);
+        $bloodGroup = $this->nullableString($_POST['blood_group'] ?? null);
+        $occupation = $this->nullableString($_POST['occupation'] ?? null);
+        $mobile = $this->nullableString($_POST['mobile'] ?? null);
+        $email = $this->nullableString($_POST['email'] ?? null);
+        $address = $this->nullableString($_POST['address'] ?? null);
+        $isAlive = isset($_POST['is_alive']) ? 1 : 0;
+        $relationType = (string)($_POST['relation_type'] ?? 'none');
+        $parentType = (string)($_POST['parent_type'] ?? 'father');
+        $parentPersonId = (int)($_POST['parent_person_id'] ?? 0);
+        $parentLinkType = (string)($_POST['parent_link_type'] ?? 'father');
+        $fatherPersonId = (int)($_POST['father_person_id'] ?? 0);
+        $motherPersonId = (int)($_POST['mother_person_id'] ?? 0);
+        $spouseMarriageDate = $this->normalizeDate($_POST['spouse_marriage_date'] ?? null);
+
+        if (!in_array($gender, ['male', 'female', 'other', 'unknown'], true)) {
+            $gender = 'unknown';
+        }
+        if (!in_array($relationType, ['none', 'child', 'spouse', 'father', 'mother', 'brother', 'sister', 'grandfather', 'grandmother'], true)) {
+            $relationType = 'none';
+        }
+        if (!in_array($parentType, ['father', 'mother', 'adoptive', 'step'], true)) {
+            $parentType = 'father';
+        }
+        if (!in_array($parentLinkType, ['father', 'mother', 'adoptive', 'step'], true)) {
+            $parentLinkType = 'father';
+        }
+
+        if ($existingPersonId <= 0 && $fullName === '') {
+            $_SESSION['flash_error'] = 'Select existing person or enter new full name.';
+            header('Location: /index.php?route=admin/add-person');
+            exit;
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $targetPersonId = $existingPersonId;
+            if ($targetPersonId <= 0) {
+                $targetPersonId = $this->people->create([
+                    ':full_name' => $fullName,
+                    ':gender' => $gender,
+                    ':date_of_birth' => $dateOfBirth,
+                    ':birth_year' => $birthYear,
+                    ':birth_order' => $birthOrder,
+                    ':date_of_death' => $dateOfDeath,
+                    ':blood_group' => $bloodGroup,
+                    ':occupation' => $occupation,
+                    ':mobile' => $mobile,
+                    ':email' => $email,
+                    ':address' => $address,
+                    ':current_location' => $currentLocation,
+                    ':native_location' => $nativeLocation,
+                    ':is_alive' => $isAlive,
+                    ':father_id' => null,
+                    ':mother_id' => null,
+                    ':spouse_id' => null,
+                    ':branch_id' => null,
+                    ':birth_order' => $birthOrder,
+                    ':created_by' => (int)(app_user()['user_id'] ?? 0) ?: null,
+                    ':editable_scope' => 'self_branch',
+                    ':is_locked' => 0,
+                    ':is_deleted' => 0,
+                ]);
+            }
+
+            if ($parentPersonId > 0) {
+                $this->linkParentChild($parentPersonId, $targetPersonId, $parentLinkType);
+            }
+            if ($fatherPersonId > 0) {
+                $this->linkParentChild($fatherPersonId, $targetPersonId, 'father');
+            }
+            if ($motherPersonId > 0) {
+                $this->linkParentChild($motherPersonId, $targetPersonId, 'mother');
+            }
+
+            $anchorId = $referencePersonId > 0 ? $referencePersonId : (int)$targetPersonId;
+            if ($relationType !== 'none' && $anchorId > 0 && $targetPersonId > 0) {
+                $this->applyRelation($anchorId, $targetPersonId, $relationType, $parentType, $birthOrder, $spouseMarriageDate);
+            }
+
+            $this->db->commit();
+            $_SESSION['flash_success'] = 'Person saved successfully.';
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $_SESSION['flash_error'] = $e->getMessage();
+        }
+
+        header('Location: /index.php?route=admin/add-person');
+        exit;
     }
 
     public function treeView(): void
@@ -521,6 +641,130 @@ final class AdminController extends BaseController
                 $stmt->execute([':fid' => $spouseId, ':cid' => $childId]);
             }
         }
+    }
+
+    private function applyRelation(int $anchorId, int $targetId, string $relationType, string $parentType, ?int $birthOrder, ?string $spouseMarriageDate = null): void
+    {
+        if ($anchorId === $targetId && in_array($relationType, ['father', 'mother', 'brother', 'sister', 'child', 'spouse'], true)) {
+            return;
+        }
+
+        if ($relationType === 'spouse') {
+            $u = $this->db->prepare('UPDATE persons SET spouse_id = :spouse WHERE person_id = :id');
+            $u->execute([':spouse' => $targetId, ':id' => $anchorId]);
+            $u->execute([':spouse' => $anchorId, ':id' => $targetId]);
+            $this->upsertMarriageByPair($anchorId, $targetId, $spouseMarriageDate);
+            $this->linkMissingOtherParentForChildren($anchorId, $targetId);
+            return;
+        }
+
+        if ($relationType === 'child') {
+            $this->linkParentChild($anchorId, $targetId, $parentType);
+            return;
+        }
+
+        if ($relationType === 'father') {
+            $this->linkParentChild($targetId, $anchorId, 'father');
+            return;
+        }
+
+        if ($relationType === 'mother') {
+            $this->linkParentChild($targetId, $anchorId, 'mother');
+            return;
+        }
+
+        if ($relationType === 'brother' || $relationType === 'sister') {
+            $anchor = $this->people->findById($anchorId);
+            if ($anchor !== null) {
+                $upd = $this->db->prepare('UPDATE persons SET father_id = :father_id, mother_id = :mother_id WHERE person_id = :id');
+                $upd->execute([
+                    ':father_id' => $anchor['father_id'] ?: null,
+                    ':mother_id' => $anchor['mother_id'] ?: null,
+                    ':id' => $targetId,
+                ]);
+            }
+            return;
+        }
+
+        if ($relationType === 'grandfather') {
+            $anchor = $this->people->findById($anchorId);
+            if ($anchor !== null && (int)($anchor['father_id'] ?? 0) > 0) {
+                $this->linkParentChild($targetId, (int)$anchor['father_id'], 'father');
+            }
+            return;
+        }
+
+        if ($relationType === 'grandmother') {
+            $anchor = $this->people->findById($anchorId);
+            if ($anchor !== null && (int)($anchor['mother_id'] ?? 0) > 0) {
+                $this->linkParentChild($targetId, (int)$anchor['mother_id'], 'mother');
+            }
+        }
+    }
+
+    private function upsertMarriageByPair(int $person1Id, int $person2Id, ?string $marriageDate): void
+    {
+        $check = $this->db->prepare(
+            'SELECT marriage_id
+             FROM marriages
+             WHERE (person1_id = :a1 AND person2_id = :b1)
+                OR (person1_id = :a2 AND person2_id = :b2)
+             LIMIT 1'
+        );
+        $check->execute([
+            ':a1' => $person1Id,
+            ':b1' => $person2Id,
+            ':a2' => $person2Id,
+            ':b2' => $person1Id,
+        ]);
+        $row = $check->fetch();
+        if ($row) {
+            if ($marriageDate !== null) {
+                $upd = $this->db->prepare('UPDATE marriages SET marriage_date = COALESCE(marriage_date, :md) WHERE marriage_id = :id');
+                $upd->execute([':md' => $marriageDate, ':id' => (int)$row['marriage_id']]);
+            }
+            return;
+        }
+
+        $ins = $this->db->prepare(
+            'INSERT INTO marriages (person1_id, person2_id, marriage_date, divorce_date, status)
+             VALUES (:p1, :p2, :md, NULL, :status)'
+        );
+        $ins->execute([
+            ':p1' => $person1Id,
+            ':p2' => $person2Id,
+            ':md' => $marriageDate,
+            ':status' => 'married',
+        ]);
+    }
+
+    private function linkMissingOtherParentForChildren(int $anchorId, int $spouseId): void
+    {
+        $fillFather = $this->db->prepare(
+            'UPDATE persons
+             SET father_id = :spouse
+             WHERE mother_id = :anchor
+               AND (father_id IS NULL OR father_id = 0)
+               AND person_id <> :spouse2'
+        );
+        $fillFather->execute([
+            ':spouse' => $spouseId,
+            ':anchor' => $anchorId,
+            ':spouse2' => $spouseId,
+        ]);
+
+        $fillMother = $this->db->prepare(
+            'UPDATE persons
+             SET mother_id = :spouse
+             WHERE father_id = :anchor
+               AND (mother_id IS NULL OR mother_id = 0)
+               AND person_id <> :spouse2'
+        );
+        $fillMother->execute([
+            ':spouse' => $spouseId,
+            ':anchor' => $anchorId,
+            ':spouse2' => $spouseId,
+        ]);
     }
 
     private function normalizeDate(mixed $value): ?string
