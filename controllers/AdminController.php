@@ -52,6 +52,87 @@ final class AdminController extends BaseController
         unset($_SESSION['flash_error'], $_SESSION['flash_success']);
     }
 
+    public function editPerson(): void
+    {
+        $id = (int)($_GET['id'] ?? $_POST['person_id'] ?? 0);
+        if ($id <= 0) {
+            $_SESSION['flash_error'] = 'Invalid person id.';
+            header('Location: /index.php?route=admin/family-list');
+            exit;
+        }
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+                $_SESSION['flash_error'] = 'Invalid CSRF token.';
+                header('Location: /index.php?route=admin/edit-person&id=' . $id);
+                exit;
+            }
+
+            $person = $this->people->findById($id);
+            if ($person === null) {
+                $_SESSION['flash_error'] = 'Person not found.';
+                header('Location: /index.php?route=admin/family-list');
+                exit;
+            }
+
+            $fullName = trim((string)($_POST['full_name'] ?? ''));
+            if ($fullName === '') {
+                $_SESSION['flash_error'] = 'Full name is required.';
+                header('Location: /index.php?route=admin/edit-person&id=' . $id);
+                exit;
+            }
+
+            $gender = (string)($_POST['gender'] ?? 'unknown');
+            if (!in_array($gender, ['male', 'female', 'other', 'unknown'], true)) {
+                $gender = 'unknown';
+            }
+            $fatherPersonId = (int)($_POST['father_person_id'] ?? 0);
+            $motherPersonId = (int)($_POST['mother_person_id'] ?? 0);
+
+            $this->people->update($id, [
+                ':full_name' => $fullName,
+                ':gender' => $gender,
+                ':date_of_birth' => $this->normalizeDate($_POST['date_of_birth'] ?? null),
+                ':birth_year' => $this->normalizeInt($_POST['birth_year'] ?? null),
+                ':date_of_death' => $this->normalizeDate($_POST['date_of_death'] ?? null),
+                ':blood_group' => $this->nullableString($_POST['blood_group'] ?? null),
+                ':occupation' => $this->nullableString($_POST['occupation'] ?? null),
+                ':mobile' => $this->nullableString($_POST['mobile'] ?? null),
+                ':email' => $this->nullableString($_POST['email'] ?? null),
+                ':address' => $this->nullableString($_POST['address'] ?? null),
+                ':current_location' => $this->nullableString($_POST['current_location'] ?? null),
+                ':native_location' => $this->nullableString($_POST['native_location'] ?? null),
+                ':is_alive' => isset($_POST['is_alive']) ? 1 : 0,
+            ]);
+
+            if ($fatherPersonId > 0) {
+                $this->linkParentChild($fatherPersonId, $id, 'father');
+            }
+            if ($motherPersonId > 0) {
+                $this->linkParentChild($motherPersonId, $id, 'mother');
+            }
+
+            $_SESSION['flash_success'] = 'Person updated.';
+            header('Location: /index.php?route=admin/edit-person&id=' . $id);
+            exit;
+        }
+
+        $person = $this->people->findById($id);
+        if ($person === null) {
+            $_SESSION['flash_error'] = 'Person not found.';
+            header('Location: /index.php?route=admin/family-list');
+            exit;
+        }
+
+        $this->render('member/person_edit', [
+            'title' => 'Edit Person',
+            'person' => $person,
+            'error' => $_SESSION['flash_error'] ?? null,
+            'success' => $_SESSION['flash_success'] ?? null,
+        ]);
+        unset($_SESSION['flash_error'], $_SESSION['flash_success']);
+    }
+
     public function viewPerson(): void
     {
         $id = (int)($_GET['id'] ?? 0);
@@ -417,6 +498,52 @@ final class AdminController extends BaseController
         }
         $n = $distance - 2;
         return $n . 'th ' . ($isFemale ? 'Great Grandmother' : 'Great Grandfather');
+    }
+
+    private function linkParentChild(int $parentId, int $childId, string $parentType): void
+    {
+        $parent = $this->people->findById($parentId);
+        $spouseId = (int)($parent['spouse_id'] ?? 0);
+
+        if ($parentType === 'father') {
+            $stmt = $this->db->prepare('UPDATE persons SET father_id = :pid WHERE person_id = :cid');
+            $stmt->execute([':pid' => $parentId, ':cid' => $childId]);
+            if ($spouseId > 0 && $spouseId !== $childId) {
+                $stmt = $this->db->prepare('UPDATE persons SET mother_id = :mid WHERE person_id = :cid AND (mother_id IS NULL OR mother_id = 0)');
+                $stmt->execute([':mid' => $spouseId, ':cid' => $childId]);
+            }
+        } elseif ($parentType === 'mother') {
+            $stmt = $this->db->prepare('UPDATE persons SET mother_id = :pid WHERE person_id = :cid');
+            $stmt->execute([':pid' => $parentId, ':cid' => $childId]);
+            if ($spouseId > 0 && $spouseId !== $childId) {
+                $stmt = $this->db->prepare('UPDATE persons SET father_id = :fid WHERE person_id = :cid AND (father_id IS NULL OR father_id = 0)');
+                $stmt->execute([':fid' => $spouseId, ':cid' => $childId]);
+            }
+        }
+    }
+
+    private function normalizeDate(mixed $value): ?string
+    {
+        $text = trim((string)$value);
+        if ($text === '') {
+            return null;
+        }
+        return $text;
+    }
+
+    private function normalizeInt(mixed $value): ?int
+    {
+        $text = trim((string)$value);
+        if ($text === '') {
+            return null;
+        }
+        return (int)$text;
+    }
+
+    private function nullableString(mixed $value): ?string
+    {
+        $text = trim((string)$value);
+        return $text === '' ? null : $text;
     }
 
     private function calculateAge(array $person): ?int

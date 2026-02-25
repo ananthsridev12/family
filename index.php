@@ -217,6 +217,10 @@ switch ($route) {
         require_role('admin');
         $adminController->descendants();
         break;
+    case 'admin/edit-person':
+        require_role('admin');
+        $adminController->editPerson();
+        break;
     case 'admin/relationship-finder':
         require_role('admin');
         $adminController->relationshipFinder();

@@ -47,6 +47,7 @@
         <td><?= (int)($item['created_by'] ?? 0) ?></td>
         <td><?= (int)($item['is_locked'] ?? 0) === 1 ? 'Yes' : 'No' ?></td>
         <td>
+          <a class="btn btn-sm btn-outline-primary mb-1" href="/index.php?route=admin/edit-person&id=<?= (int)$item['person_id'] ?>">Edit</a>
           <form method="post" action="/index.php?route=admin/delete-person" onsubmit="return confirm('Delete this person?');">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="person_id" value="<?= (int)$item['person_id'] ?>">
