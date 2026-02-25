@@ -24,7 +24,11 @@
       <tr>
         <td><?= (int)$r['generation'] ?></td>
         <td><?= (int)$r['person_id'] ?></td>
-        <td><?= htmlspecialchars((string)$r['name'], ENT_QUOTES, 'UTF-8') ?></td>
+        <td>
+          <a href="/index.php?route=<?= htmlspecialchars($routePrefix . '/person-view', ENT_QUOTES, 'UTF-8') ?>&id=<?= (int)$r['person_id'] ?>">
+            <?= htmlspecialchars((string)$r['name'], ENT_QUOTES, 'UTF-8') ?>
+          </a>
+        </td>
         <td><?= htmlspecialchars((string)$r['gender'], ENT_QUOTES, 'UTF-8') ?></td>
       </tr>
       <?php endforeach; ?>

@@ -17,7 +17,10 @@ final class MemberController extends BaseController
 
     public function dashboard(): void
     {
-        $this->render('member/dashboard', ['title' => 'Member Dashboard']);
+        $this->render('member/dashboard', [
+            'title' => 'Member Dashboard',
+            'stats' => $this->collectStats(),
+        ]);
     }
 
     public function addPerson(): void
@@ -251,7 +254,10 @@ final class MemberController extends BaseController
 
     public function reports(): void
     {
-        $this->render('member/reports', ['title' => 'Reports']);
+        $this->render('member/reports', [
+            'title' => 'Reports',
+            'stats' => $this->collectStats(),
+        ]);
     }
 
     public function settings(): void
@@ -307,6 +313,7 @@ final class MemberController extends BaseController
         $parentLinkType = (string)($_POST['parent_link_type'] ?? 'father'); // backward compatibility
         $fatherPersonId = (int)($_POST['father_person_id'] ?? 0);
         $motherPersonId = (int)($_POST['mother_person_id'] ?? 0);
+        $spousePersonId = (int)($_POST['spouse_person_id'] ?? 0);
         $birthOrder = $this->normalizeInt($_POST['birth_order'] ?? null);
         $spouseMarriageDate = $this->normalizeDate($_POST['spouse_marriage_date'] ?? null);
 
@@ -371,6 +378,9 @@ final class MemberController extends BaseController
             if ($motherPersonId > 0) {
                 $this->linkParentChild($motherPersonId, $targetPersonId, 'mother');
             }
+            if ($spousePersonId > 0 && $spousePersonId !== $targetPersonId) {
+                $this->applyRelation($targetPersonId, $spousePersonId, 'spouse', 'father', null, $spouseMarriageDate);
+            }
 
             $defaultAnchorId = (int)(app_user()['person_id'] ?? 0);
             $anchorId = $referencePersonId > 0 ? $referencePersonId : ($defaultAnchorId > 0 ? $defaultAnchorId : (int)$targetPersonId);
@@ -424,6 +434,7 @@ final class MemberController extends BaseController
         }
         $fatherPersonId = (int)($_POST['father_person_id'] ?? 0);
         $motherPersonId = (int)($_POST['mother_person_id'] ?? 0);
+        $spousePersonId = (int)($_POST['spouse_person_id'] ?? 0);
 
         $this->people->update($id, [
             ':full_name' => $fullName,
@@ -447,6 +458,9 @@ final class MemberController extends BaseController
         }
         if ($motherPersonId > 0) {
             $this->linkParentChild($motherPersonId, $id, 'mother');
+        }
+        if ($spousePersonId > 0 && $spousePersonId !== $id) {
+            $this->applyRelation($id, $spousePersonId, 'spouse', 'father', null, $this->normalizeDate($_POST['spouse_marriage_date'] ?? null));
         }
 
         $_SESSION['flash_success'] = 'Person updated.';
@@ -877,6 +891,28 @@ final class MemberController extends BaseController
         }
         $n = $distance - 2;
         return $n . 'th ' . ($isFemale ? 'Great Grandmother' : 'Great Grandfather');
+    }
+
+    private function collectStats(): array
+    {
+        $users = (int)$this->db->query('SELECT COUNT(*) FROM users')->fetchColumn();
+        $persons = (int)$this->db->query('SELECT COUNT(*) FROM persons WHERE (is_deleted = 0 OR is_deleted IS NULL)')->fetchColumn();
+        $marriages = (int)$this->db->query('SELECT COUNT(*) FROM marriages')->fetchColumn();
+        $familiesWithKids = (int)$this->db->query(
+            'SELECT COUNT(DISTINCT m.marriage_id)
+             FROM marriages m
+             INNER JOIN persons c
+               ON (c.father_id = m.person1_id AND c.mother_id = m.person2_id)
+               OR (c.father_id = m.person2_id AND c.mother_id = m.person1_id)
+             WHERE (c.is_deleted = 0 OR c.is_deleted IS NULL)'
+        )->fetchColumn();
+
+        return [
+            'users' => $users,
+            'persons' => $persons,
+            'marriages' => $marriages,
+            'families' => $familiesWithKids,
+        ];
     }
 
     private function canEditPerson(array $person): bool

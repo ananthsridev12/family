@@ -1,7 +1,10 @@
 <?php include __DIR__ . '/../layouts/app_start.php'; ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">Person Profile</h1>
-  <a class="btn btn-sm btn-outline-secondary" href="/index.php?route=admin/family-list">Back to List</a>
+  <div class="d-flex gap-2">
+    <a class="btn btn-sm btn-outline-primary" href="/index.php?route=admin/edit-person&id=<?= (int)$person['person_id'] ?>">Edit Profile</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/index.php?route=admin/family-list">Back to List</a>
+  </div>
 </div>
 
 <div class="card card-body shadow-sm">

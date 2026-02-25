@@ -19,7 +19,10 @@ final class AdminController extends BaseController
 
     public function dashboard(): void
     {
-        $this->render('admin/dashboard', ['title' => 'Admin Dashboard']);
+        $this->render('admin/dashboard', [
+            'title' => 'Admin Dashboard',
+            'stats' => $this->collectStats(),
+        ]);
     }
 
     public function addPerson(): void
@@ -384,7 +387,10 @@ final class AdminController extends BaseController
 
     public function reports(): void
     {
-        $this->render('admin/reports', ['title' => 'Reports']);
+        $this->render('admin/reports', [
+            'title' => 'Reports',
+            'stats' => $this->collectStats(),
+        ]);
     }
 
     public function settings(): void
@@ -820,5 +826,27 @@ final class AdminController extends BaseController
             return max(0, (int)date('Y') - $by);
         }
         return null;
+    }
+
+    private function collectStats(): array
+    {
+        $users = (int)$this->db->query('SELECT COUNT(*) FROM users')->fetchColumn();
+        $persons = (int)$this->db->query('SELECT COUNT(*) FROM persons WHERE (is_deleted = 0 OR is_deleted IS NULL)')->fetchColumn();
+        $marriages = (int)$this->db->query('SELECT COUNT(*) FROM marriages')->fetchColumn();
+        $familiesWithKids = (int)$this->db->query(
+            'SELECT COUNT(DISTINCT m.marriage_id)
+             FROM marriages m
+             INNER JOIN persons c
+               ON (c.father_id = m.person1_id AND c.mother_id = m.person2_id)
+               OR (c.father_id = m.person2_id AND c.mother_id = m.person1_id)
+             WHERE (c.is_deleted = 0 OR c.is_deleted IS NULL)'
+        )->fetchColumn();
+
+        return [
+            'users' => $users,
+            'persons' => $persons,
+            'marriages' => $marriages,
+            'families' => $familiesWithKids,
+        ];
     }
 }

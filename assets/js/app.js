@@ -68,8 +68,16 @@
     toggle.className = 'btn btn-sm btn-outline-secondary';
     toggle.textContent = '+';
 
-    var title = document.createElement('strong');
-    title.textContent = person.name + ' #' + person.id;
+    var containerEl = wrap.closest('#treeContainer');
+    var profileRoute = (containerEl && containerEl.getAttribute('data-profile-route')) || '';
+    var titleLink = document.createElement('a');
+    if (profileRoute) {
+      titleLink.href = profileRoute + '&id=' + encodeURIComponent(person.id);
+    } else {
+      titleLink.href = '#';
+    }
+    titleLink.textContent = person.name + ' #' + person.id;
+    titleLink.className = 'text-decoration-none';
 
     var childrenWrap = document.createElement('div');
     childrenWrap.className = 'mt-2';
@@ -125,7 +133,7 @@
     });
 
     header.appendChild(toggle);
-    header.appendChild(title);
+    header.appendChild(titleLink);
     wrap.appendChild(header);
     wrap.appendChild(childrenWrap);
 
