@@ -194,6 +194,7 @@ final class AdminController extends BaseController
         $parentLinkType = (string)($_POST['parent_link_type'] ?? 'father');
         $fatherPersonId = (int)($_POST['father_person_id'] ?? 0);
         $motherPersonId = (int)($_POST['mother_person_id'] ?? 0);
+        $spousePersonId = (int)($_POST['spouse_person_id'] ?? 0);
         $spouseMarriageDate = $this->normalizeDate($_POST['spouse_marriage_date'] ?? null);
 
         if (!in_array($gender, ['male', 'female', 'other', 'unknown'], true)) {
@@ -238,7 +239,6 @@ final class AdminController extends BaseController
                     ':mother_id' => null,
                     ':spouse_id' => null,
                     ':branch_id' => null,
-                    ':birth_order' => $birthOrder,
                     ':created_by' => (int)(app_user()['user_id'] ?? 0) ?: null,
                     ':editable_scope' => 'self_branch',
                     ':is_locked' => 0,
@@ -254,6 +254,9 @@ final class AdminController extends BaseController
             }
             if ($motherPersonId > 0) {
                 $this->linkParentChild($motherPersonId, $targetPersonId, 'mother');
+            }
+            if ($spousePersonId > 0 && $spousePersonId !== $targetPersonId) {
+                $this->applyRelation($targetPersonId, $spousePersonId, 'spouse', 'father', null, $spouseMarriageDate);
             }
 
             $anchorId = $referencePersonId > 0 ? $referencePersonId : (int)$targetPersonId;

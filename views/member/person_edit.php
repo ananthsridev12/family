@@ -50,6 +50,10 @@
       <label class="form-label">Date of Death</label>
       <input type="date" name="date_of_death" class="form-control" value="<?= htmlspecialchars((string)($person['date_of_death'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
     </div>
+    <div class="col-md-3">
+      <label class="form-label">Marriage Date (optional)</label>
+      <input type="date" name="spouse_marriage_date" class="form-control" value="">
+    </div>
 
     <div class="col-md-6 position-relative">
       <label class="form-label">Father (optional update)</label>
@@ -62,6 +66,12 @@
       <input type="text" id="mother_search" class="form-control" placeholder="Search mother name or ID">
       <input type="hidden" name="mother_person_id" id="mother_person_id">
       <div id="mother_results" class="list-group position-absolute w-100"></div>
+    </div>
+    <div class="col-md-6 position-relative">
+      <label class="form-label">Spouse (optional update)</label>
+      <input type="text" id="spouse_search" class="form-control" placeholder="Search spouse name or ID">
+      <input type="hidden" name="spouse_person_id" id="spouse_person_id">
+      <div id="spouse_results" class="list-group position-absolute w-100"></div>
     </div>
 
     <div class="col-md-3">
@@ -143,6 +153,7 @@
 
   attachSearch('father_search', 'father_person_id', 'father_results');
   attachSearch('mother_search', 'mother_person_id', 'mother_results');
+  attachSearch('spouse_search', 'spouse_person_id', 'spouse_results');
 })();
 </script>
 <?php include __DIR__ . '/../layouts/app_end.php'; ?>
