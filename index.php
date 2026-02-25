@@ -251,7 +251,7 @@ switch ($route) {
         $memberController->addPerson();
         break;
     case 'member/edit-person':
-        require_any_role(['limited_member', 'full_editor']);
+        require_any_role(['limited_member', 'full_editor', 'admin']);
         $memberController->editPerson();
         break;
     case 'member/add-marriage':
