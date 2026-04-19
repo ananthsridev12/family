@@ -26,12 +26,16 @@ final class AdminController extends BaseController
     public function dashboard(): void
     {
         $userId = (int)(app_user()['user_id'] ?? 0);
-        (new ReminderService($this->db))->generateForUser($userId);
+        try { (new ReminderService($this->db))->generateForUser($userId); } catch (Throwable $e) {}
+        $unread = 0;
+        $pendingProposals = 0;
+        try { $unread = $this->notifications->countUnread($userId); } catch (Throwable $e) {}
+        try { $pendingProposals = $this->proposals->countPending(); } catch (Throwable $e) {}
         $this->render('admin/dashboard', [
-            'title'           => 'Admin Dashboard',
-            'stats'           => $this->collectStats(),
-            'unread_count'    => $this->notifications->countUnread($userId),
-            'pending_proposals' => $this->proposals->countPending(),
+            'title'             => 'Admin Dashboard',
+            'stats'             => $this->collectStats(),
+            'unread_count'      => $unread,
+            'pending_proposals' => $pendingProposals,
         ]);
     }
 
@@ -176,10 +180,12 @@ final class AdminController extends BaseController
             header('Location: /index.php?route=admin/family-list');
             exit;
         }
+        $attachments = [];
+        try { $attachments = $this->attachments->findByPersonId($id); } catch (Throwable $e) {}
         $this->render('admin/person_view', [
             'title'       => 'Person Profile',
             'person'      => $person,
-            'attachments' => $this->attachments->findByPersonId($id),
+            'attachments' => $attachments,
         ]);
     }
 

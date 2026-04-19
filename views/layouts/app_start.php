@@ -10,10 +10,12 @@
         <div class="d-flex align-items-center gap-2 ms-auto">
           <?php if (!empty(app_user())): ?>
           <?php
-            $__notifDb = app_db();
-            $__notifStmt = $__notifDb->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = :uid AND is_read = 0');
-            $__notifStmt->execute([':uid' => (int)(app_user()['user_id'] ?? 0)]);
-            $__unread = (int)$__notifStmt->fetchColumn();
+            $__unread = 0;
+            try {
+                $__notifStmt = app_db()->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = :uid AND is_read = 0');
+                $__notifStmt->execute([':uid' => (int)(app_user()['user_id'] ?? 0)]);
+                $__unread = (int)$__notifStmt->fetchColumn();
+            } catch (Throwable $__e) { /* table may not exist yet */ }
           ?>
           <a href="/index.php?route=notifications" class="btn btn-outline-secondary btn-sm position-relative" title="Notifications">
             &#128276;

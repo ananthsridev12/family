@@ -148,13 +148,13 @@ final class PersonController extends BaseController
             $this->json(['error' => 'File exceeds 5 MB limit.']);
         }
 
-        $ext = match ($mimeType) {
+        $extMap = [
             'image/jpeg'      => 'jpg',
             'image/png'       => 'png',
             'image/webp'      => 'webp',
             'application/pdf' => 'pdf',
-            default           => 'bin',
-        };
+        ];
+        $ext = $extMap[$mimeType] ?? 'bin';
         $attType    = $mimeType === 'application/pdf' ? 'document' : 'photo';
         $storedName = uniqid('att_', true) . '.' . $ext;
         $dir        = self::UPLOAD_BASE . '/' . $personId;
