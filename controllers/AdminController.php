@@ -847,16 +847,22 @@ final class AdminController extends BaseController
 
     public function pendingProposals(): void
     {
+        $proposals = [];
+        try { $proposals = $this->proposals->findPending(); } catch (Throwable $e) {}
         $this->render('admin/proposals_pending', [
             'title'     => 'Edit Proposals',
-            'proposals' => $this->proposals->findPending(),
+            'proposals' => $proposals,
         ]);
     }
 
     public function reviewProposal(): void
     {
-        $id       = (int)($_GET['id'] ?? 0);
-        $proposal = $this->proposals->findById($id);
+        $id = (int)($_GET['id'] ?? 0);
+        try {
+            $proposal = $this->proposals->findById($id);
+        } catch (Throwable $e) {
+            $proposal = null;
+        }
         if ($proposal === null) {
             $_SESSION['flash_error'] = 'Proposal not found.';
             header('Location: /index.php?route=admin/proposals');
@@ -920,15 +926,15 @@ final class AdminController extends BaseController
         }
 
         $adminId = (int)(app_user()['user_id'] ?? 0);
-        $this->proposals->approve($id, $adminId);
-        $this->notifications->create(
-            $proposerId,
-            'proposal_approved',
-            'Edit approved: ' . ($proposal['person_name'] ?? ''),
-            'Your edit proposal for ' . ($proposal['person_name'] ?? 'a person') . ' was approved.',
-            $personId,
-            '/index.php?route=member/person-view&id=' . $personId
-        );
+        try { $this->proposals->approve($id, $adminId); } catch (Throwable $e) {}
+        try {
+            $this->notifications->create(
+                $proposerId, 'proposal_approved',
+                'Edit approved: ' . ($proposal['person_name'] ?? ''),
+                'Your edit proposal for ' . ($proposal['person_name'] ?? 'a person') . ' was approved.',
+                $personId, '/index.php?route=member/person-view&id=' . $personId
+            );
+        } catch (Throwable $e) {}
 
         $_SESSION['flash_success'] = 'Proposal approved and changes applied.';
         header('Location: /index.php?route=admin/proposals');
@@ -954,15 +960,15 @@ final class AdminController extends BaseController
         $adminId    = (int)(app_user()['user_id'] ?? 0);
         $proposerId = (int)$proposal['proposed_by'];
         $personId   = (int)$proposal['person_id'];
-        $this->proposals->reject($id, $adminId, $notes);
-        $this->notifications->create(
-            $proposerId,
-            'proposal_rejected',
-            'Edit rejected: ' . ($proposal['person_name'] ?? ''),
-            'Your edit proposal for ' . ($proposal['person_name'] ?? 'a person') . ' was rejected.' . ($notes !== '' ? ' Note: ' . $notes : ''),
-            $personId,
-            '/index.php?route=member/person-view&id=' . $personId
-        );
+        try { $this->proposals->reject($id, $adminId, $notes); } catch (Throwable $e) {}
+        try {
+            $this->notifications->create(
+                $proposerId, 'proposal_rejected',
+                'Edit rejected: ' . ($proposal['person_name'] ?? ''),
+                'Your edit proposal for ' . ($proposal['person_name'] ?? 'a person') . ' was rejected.' . ($notes !== '' ? ' Note: ' . $notes : ''),
+                $personId, '/index.php?route=member/person-view&id=' . $personId
+            );
+        } catch (Throwable $e) {}
 
         $_SESSION['flash_success'] = 'Proposal rejected.';
         header('Location: /index.php?route=admin/proposals');
