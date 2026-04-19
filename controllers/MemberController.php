@@ -37,9 +37,11 @@ final class MemberController extends BaseController
     public function viewNotifications(): void
     {
         $userId = (int)(app_user()['user_id'] ?? 0);
+        $list = [];
+        try { $list = $this->notifications->findByUser($userId); } catch (Throwable $e) {}
         $this->render('member/notifications', [
             'title'         => 'Notifications',
-            'notifications' => $this->notifications->findByUser($userId),
+            'notifications' => $list,
         ]);
     }
 
@@ -47,9 +49,7 @@ final class MemberController extends BaseController
     {
         $userId = (int)(app_user()['user_id'] ?? 0);
         $id     = (int)($_GET['id'] ?? 0);
-        if ($id > 0) {
-            $this->notifications->markRead($id, $userId);
-        }
+        try { if ($id > 0) { $this->notifications->markRead($id, $userId); } } catch (Throwable $e) {}
         header('Location: /index.php?route=notifications');
         exit;
     }
@@ -57,7 +57,7 @@ final class MemberController extends BaseController
     public function markAllNotificationsRead(): void
     {
         $userId = (int)(app_user()['user_id'] ?? 0);
-        $this->notifications->markAllRead($userId);
+        try { $this->notifications->markAllRead($userId); } catch (Throwable $e) {}
         header('Location: /index.php?route=notifications');
         exit;
     }
