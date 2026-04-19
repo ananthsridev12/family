@@ -24,11 +24,13 @@ final class MemberController extends BaseController
     public function dashboard(): void
     {
         $userId = (int)(app_user()['user_id'] ?? 0);
-        (new ReminderService($this->db))->generateForUser($userId);
+        try { (new ReminderService($this->db))->generateForUser($userId); } catch (Throwable $e) {}
+        $unread = 0;
+        try { $unread = $this->notifications->countUnread($userId); } catch (Throwable $e) {}
         $this->render('member/dashboard', [
             'title'        => 'Member Dashboard',
             'stats'        => $this->collectStats(),
-            'unread_count' => $this->notifications->countUnread($userId),
+            'unread_count' => $unread,
         ]);
     }
 
@@ -102,12 +104,14 @@ final class MemberController extends BaseController
         }
 
         $userId = (int)(app_user()['user_id'] ?? 0);
+        $pendingProposal = null;
+        try { $pendingProposal = $this->proposals->findPendingByPersonAndUser($id, $userId); } catch (Throwable $e) {}
         $this->render('member/person_edit', [
             'title'           => 'Edit Person',
             'person'          => $person,
             'error'           => $_SESSION['flash_error']   ?? null,
             'success'         => $_SESSION['flash_success'] ?? null,
-            'pendingProposal' => $this->proposals->findPendingByPersonAndUser($id, $userId),
+            'pendingProposal' => $pendingProposal,
         ]);
         unset($_SESSION['flash_error'], $_SESSION['flash_success']);
     }
@@ -197,11 +201,15 @@ final class MemberController extends BaseController
             exit;
         }
         $userId = (int)(app_user()['user_id'] ?? 0);
+        $attachments = [];
+        $pendingProposal = null;
+        try { $attachments = $this->attachments->findByPersonId($id); } catch (Throwable $e) {}
+        try { $pendingProposal = $this->proposals->findPendingByPersonAndUser($id, $userId); } catch (Throwable $e) {}
         $this->render('member/person_view', [
             'title'           => 'Person Profile',
             'person'          => $person,
-            'attachments'     => $this->attachments->findByPersonId($id),
-            'pendingProposal' => $this->proposals->findPendingByPersonAndUser($id, $userId),
+            'attachments'     => $attachments,
+            'pendingProposal' => $pendingProposal,
         ]);
     }
 
