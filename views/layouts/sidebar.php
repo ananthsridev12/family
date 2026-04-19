@@ -22,7 +22,9 @@ $routePrefix = role_route_prefix();
       <li class="nav-item"><a class="nav-link" href="/index.php?route=<?= $routePrefix ?>/settings">Settings</a></li>
       <?php if ($role === 'admin'): ?>
       <li class="nav-item"><a class="nav-link" href="/index.php?route=admin/users">Users</a></li>
+      <li class="nav-item"><a class="nav-link" href="/index.php?route=admin/proposals">Edit Proposals</a></li>
       <?php endif; ?>
+      <li class="nav-item"><a class="nav-link" href="/index.php?route=notifications">Notifications</a></li>
       <li class="nav-item"><a class="nav-link text-danger" href="/index.php?route=logout">Logout</a></li>
     </ul>
   </div>

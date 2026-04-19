@@ -7,7 +7,11 @@ require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/models/PersonModel.php';
 require_once __DIR__ . '/models/BranchModel.php';
 require_once __DIR__ . '/models/UserModel.php';
+require_once __DIR__ . '/models/AttachmentModel.php';
+require_once __DIR__ . '/models/NotificationModel.php';
+require_once __DIR__ . '/models/EditProposalModel.php';
 require_once __DIR__ . '/services/RelationshipEngine.php';
+require_once __DIR__ . '/services/ReminderService.php';
 require_once __DIR__ . '/controllers/BaseController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/PublicController.php';
@@ -172,6 +176,22 @@ switch ($route) {
         require_auth();
         $personController->search();
         break;
+    case 'person/check-duplicate':
+        require_auth();
+        $personController->checkDuplicate();
+        break;
+    case 'person/attachment':
+        require_auth();
+        $personController->serveAttachment();
+        break;
+    case 'person/upload-attachment':
+        require_auth();
+        $personController->uploadAttachment();
+        break;
+    case 'person/delete-attachment':
+        require_auth();
+        $personController->deleteAttachment();
+        break;
     case 'person/children':
         require_auth();
         $personController->children();
@@ -301,6 +321,36 @@ switch ($route) {
     case 'member/settings':
         require_any_role(['limited_member', 'full_editor']);
         $memberController->settings();
+        break;
+
+    case 'notifications':
+        require_auth();
+        $memberController->viewNotifications();
+        break;
+    case 'notifications/mark-read':
+        require_auth();
+        $memberController->markNotificationRead();
+        break;
+    case 'notifications/mark-all-read':
+        require_auth();
+        $memberController->markAllNotificationsRead();
+        break;
+
+    case 'admin/proposals':
+        require_role('admin');
+        $adminController->pendingProposals();
+        break;
+    case 'admin/proposal-review':
+        require_role('admin');
+        $adminController->reviewProposal();
+        break;
+    case 'admin/approve-proposal':
+        require_role('admin');
+        $adminController->approveProposal();
+        break;
+    case 'admin/reject-proposal':
+        require_role('admin');
+        $adminController->rejectProposal();
         break;
 
     default:

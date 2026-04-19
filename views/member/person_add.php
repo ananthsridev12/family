@@ -35,7 +35,13 @@
 
     <div class="col-md-6">
       <label class="form-label">Or New Full Name</label>
-      <input type="text" name="full_name" id="full_name" class="form-control">
+      <input type="text" name="full_name" id="full_name" class="form-control" autocomplete="off">
+      <div id="duplicate_warning" class="mt-2" style="display:none;">
+        <div class="alert alert-warning py-2 mb-1">
+          <strong>Possible duplicates found:</strong>
+          <ul id="duplicate_list" class="mb-0 mt-1 ps-3"></ul>
+        </div>
+      </div>
     </div>
 
     <div class="col-md-6 position-relative">
@@ -251,13 +257,56 @@
   attachSearch('mother_search', 'mother_person_id', 'mother_results');
   attachSearch('spouse_search', 'spouse_person_id', 'spouse_results');
 
+  var dupWarning = document.getElementById('duplicate_warning');
+  var dupList = document.getElementById('duplicate_list');
+  var dupTimer = null;
+
+  function checkDuplicates() {
+    var name = fullName.value.trim();
+    var birthYear = document.querySelector('[name="birth_year"]').value.trim();
+    var gender = document.querySelector('[name="gender"]').value;
+    if (name.length < 2) {
+      dupWarning.style.display = 'none';
+      return;
+    }
+    clearTimeout(dupTimer);
+    dupTimer = setTimeout(function () {
+      var url = '/index.php?route=person/check-duplicate&name=' + encodeURIComponent(name)
+        + (birthYear ? '&birth_year=' + encodeURIComponent(birthYear) : '')
+        + '&gender=' + encodeURIComponent(gender);
+      fetch(url)
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          dupList.innerHTML = '';
+          if (data.length === 0) {
+            dupWarning.style.display = 'none';
+            return;
+          }
+          data.forEach(function (item) {
+            var li = document.createElement('li');
+            var a = document.createElement('a');
+            a.href = '/index.php?route=member/person-view&id=' + item.person_id;
+            a.target = '_blank';
+            a.textContent = item.label;
+            li.appendChild(a);
+            dupList.appendChild(li);
+          });
+          dupWarning.style.display = '';
+        });
+    }, 400);
+  }
+
   fullName.addEventListener('input', function () {
     if (fullName.value.trim() !== '') {
       document.getElementById('existing_person_id').value = '';
       document.getElementById('existing_search').value = '';
       document.getElementById('existing_results').innerHTML = '';
     }
+    checkDuplicates();
   });
+
+  document.querySelector('[name="birth_year"]').addEventListener('input', checkDuplicates);
+  document.querySelector('[name="gender"]').addEventListener('change', checkDuplicates);
 })();
 </script>
 <?php include __DIR__ . '/../layouts/app_end.php'; ?>

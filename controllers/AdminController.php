@@ -7,21 +7,31 @@ final class AdminController extends BaseController
     private BranchModel $branchesModel;
     private RelationshipEngine $engine;
     private UserModel $users;
+    private AttachmentModel $attachments;
+    private NotificationModel $notifications;
+    private EditProposalModel $proposals;
 
     public function __construct(PDO $db)
     {
         parent::__construct($db);
-        $this->people = new PersonModel($db);
+        $this->people        = new PersonModel($db);
         $this->branchesModel = new BranchModel($db);
-        $this->engine = new RelationshipEngine($db);
-        $this->users = new UserModel($db);
+        $this->engine        = new RelationshipEngine($db);
+        $this->users         = new UserModel($db);
+        $this->attachments   = new AttachmentModel($db);
+        $this->notifications = new NotificationModel($db);
+        $this->proposals     = new EditProposalModel($db);
     }
 
     public function dashboard(): void
     {
+        $userId = (int)(app_user()['user_id'] ?? 0);
+        (new ReminderService($this->db))->generateForUser($userId);
         $this->render('admin/dashboard', [
-            'title' => 'Admin Dashboard',
-            'stats' => $this->collectStats(),
+            'title'           => 'Admin Dashboard',
+            'stats'           => $this->collectStats(),
+            'unread_count'    => $this->notifications->countUnread($userId),
+            'pending_proposals' => $this->proposals->countPending(),
         ]);
     }
 
@@ -167,8 +177,9 @@ final class AdminController extends BaseController
             exit;
         }
         $this->render('admin/person_view', [
-            'title' => 'Person Profile',
-            'person' => $person,
+            'title'       => 'Person Profile',
+            'person'      => $person,
+            'attachments' => $this->attachments->findByPersonId($id),
         ]);
     }
 
@@ -826,6 +837,130 @@ final class AdminController extends BaseController
             return max(0, (int)date('Y') - $by);
         }
         return null;
+    }
+
+    public function pendingProposals(): void
+    {
+        $this->render('admin/proposals_pending', [
+            'title'     => 'Edit Proposals',
+            'proposals' => $this->proposals->findPending(),
+        ]);
+    }
+
+    public function reviewProposal(): void
+    {
+        $id       = (int)($_GET['id'] ?? 0);
+        $proposal = $this->proposals->findById($id);
+        if ($proposal === null) {
+            $_SESSION['flash_error'] = 'Proposal not found.';
+            header('Location: /index.php?route=admin/proposals');
+            exit;
+        }
+        $person = $this->people->findById((int)$proposal['person_id']);
+        $this->render('admin/proposal_review', [
+            'title'    => 'Review Proposal',
+            'proposal' => $proposal,
+            'person'   => $person ?? [],
+            'changes'  => json_decode((string)$proposal['proposed_changes'], true) ?: [],
+        ]);
+    }
+
+    public function approveProposal(): void
+    {
+        $id = (int)($_POST['proposal_id'] ?? 0);
+        if ($id <= 0 || !verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            $_SESSION['flash_error'] = 'Invalid request.';
+            header('Location: /index.php?route=admin/proposals');
+            exit;
+        }
+        $proposal = $this->proposals->findById($id);
+        if ($proposal === null || $proposal['status'] !== 'pending') {
+            $_SESSION['flash_error'] = 'Proposal not found or already reviewed.';
+            header('Location: /index.php?route=admin/proposals');
+            exit;
+        }
+
+        $changes    = json_decode((string)$proposal['proposed_changes'], true) ?: [];
+        $personId   = (int)$proposal['person_id'];
+        $proposerId = (int)$proposal['proposed_by'];
+        $person     = $this->people->findById($personId);
+
+        if ($person !== null && !empty($changes)) {
+            $updateData = [];
+            $allowedFields = ['full_name','gender','date_of_birth','birth_year','birth_order','date_of_death',
+                              'blood_group','occupation','mobile','email','address','current_location','native_location','is_alive'];
+            foreach ($changes as $field => $vals) {
+                if (in_array($field, $allowedFields, true)) {
+                    $updateData[':' . $field] = $vals['new'] === '' ? null : $vals['new'];
+                }
+            }
+            if (!empty($updateData)) {
+                $updateData[':full_name']     = $updateData[':full_name']     ?? $person['full_name'];
+                $updateData[':gender']        = $updateData[':gender']        ?? $person['gender'];
+                $updateData[':date_of_birth'] = $updateData[':date_of_birth'] ?? $person['date_of_birth'];
+                $updateData[':birth_year']    = $updateData[':birth_year']    ?? $person['birth_year'];
+                $updateData[':birth_order']   = $updateData[':birth_order']   ?? $person['birth_order'];
+                $updateData[':date_of_death'] = $updateData[':date_of_death'] ?? $person['date_of_death'];
+                $updateData[':blood_group']   = $updateData[':blood_group']   ?? $person['blood_group'];
+                $updateData[':occupation']    = $updateData[':occupation']    ?? $person['occupation'];
+                $updateData[':mobile']        = $updateData[':mobile']        ?? $person['mobile'];
+                $updateData[':email']         = $updateData[':email']         ?? $person['email'];
+                $updateData[':address']       = $updateData[':address']       ?? $person['address'];
+                $updateData[':current_location'] = $updateData[':current_location'] ?? $person['current_location'];
+                $updateData[':native_location']  = $updateData[':native_location']  ?? $person['native_location'];
+                $updateData[':is_alive']      = $updateData[':is_alive']      ?? $person['is_alive'];
+                $this->people->update($personId, $updateData);
+            }
+        }
+
+        $adminId = (int)(app_user()['user_id'] ?? 0);
+        $this->proposals->approve($id, $adminId);
+        $this->notifications->create(
+            $proposerId,
+            'proposal_approved',
+            'Edit approved: ' . ($proposal['person_name'] ?? ''),
+            'Your edit proposal for ' . ($proposal['person_name'] ?? 'a person') . ' was approved.',
+            $personId,
+            '/index.php?route=member/person-view&id=' . $personId
+        );
+
+        $_SESSION['flash_success'] = 'Proposal approved and changes applied.';
+        header('Location: /index.php?route=admin/proposals');
+        exit;
+    }
+
+    public function rejectProposal(): void
+    {
+        $id = (int)($_POST['proposal_id'] ?? 0);
+        if ($id <= 0 || !verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            $_SESSION['flash_error'] = 'Invalid request.';
+            header('Location: /index.php?route=admin/proposals');
+            exit;
+        }
+        $proposal = $this->proposals->findById($id);
+        if ($proposal === null || $proposal['status'] !== 'pending') {
+            $_SESSION['flash_error'] = 'Proposal not found or already reviewed.';
+            header('Location: /index.php?route=admin/proposals');
+            exit;
+        }
+
+        $notes      = trim((string)($_POST['admin_notes'] ?? ''));
+        $adminId    = (int)(app_user()['user_id'] ?? 0);
+        $proposerId = (int)$proposal['proposed_by'];
+        $personId   = (int)$proposal['person_id'];
+        $this->proposals->reject($id, $adminId, $notes);
+        $this->notifications->create(
+            $proposerId,
+            'proposal_rejected',
+            'Edit rejected: ' . ($proposal['person_name'] ?? ''),
+            'Your edit proposal for ' . ($proposal['person_name'] ?? 'a person') . ' was rejected.' . ($notes !== '' ? ' Note: ' . $notes : ''),
+            $personId,
+            '/index.php?route=member/person-view&id=' . $personId
+        );
+
+        $_SESSION['flash_success'] = 'Proposal rejected.';
+        header('Location: /index.php?route=admin/proposals');
+        exit;
     }
 
     private function collectStats(): array

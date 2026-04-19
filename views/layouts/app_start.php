@@ -9,6 +9,20 @@
         <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu">Menu</button>
         <div class="d-flex align-items-center gap-2 ms-auto">
           <?php if (!empty(app_user())): ?>
+          <?php
+            $__notifDb = app_db();
+            $__notifStmt = $__notifDb->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = :uid AND is_read = 0');
+            $__notifStmt->execute([':uid' => (int)(app_user()['user_id'] ?? 0)]);
+            $__unread = (int)$__notifStmt->fetchColumn();
+          ?>
+          <a href="/index.php?route=notifications" class="btn btn-outline-secondary btn-sm position-relative" title="Notifications">
+            &#128276;
+            <?php if ($__unread > 0): ?>
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.65rem;">
+              <?= $__unread > 99 ? '99+' : $__unread ?>
+            </span>
+            <?php endif; ?>
+          </a>
           <div class="small text-muted me-2">
             <strong><?= htmlspecialchars((string)(app_user()['name'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?></strong>
             <?php if (!empty(app_user()['person_id'])): ?>

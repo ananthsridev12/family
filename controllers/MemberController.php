@@ -6,21 +6,58 @@ final class MemberController extends BaseController
     private PersonModel $people;
     private BranchModel $branchesModel;
     private RelationshipEngine $engine;
+    private AttachmentModel $attachments;
+    private NotificationModel $notifications;
+    private EditProposalModel $proposals;
 
     public function __construct(PDO $db)
     {
         parent::__construct($db);
-        $this->people = new PersonModel($db);
+        $this->people        = new PersonModel($db);
         $this->branchesModel = new BranchModel($db);
-        $this->engine = new RelationshipEngine($db);
+        $this->engine        = new RelationshipEngine($db);
+        $this->attachments   = new AttachmentModel($db);
+        $this->notifications = new NotificationModel($db);
+        $this->proposals     = new EditProposalModel($db);
     }
 
     public function dashboard(): void
     {
+        $userId = (int)(app_user()['user_id'] ?? 0);
+        (new ReminderService($this->db))->generateForUser($userId);
         $this->render('member/dashboard', [
-            'title' => 'Member Dashboard',
-            'stats' => $this->collectStats(),
+            'title'        => 'Member Dashboard',
+            'stats'        => $this->collectStats(),
+            'unread_count' => $this->notifications->countUnread($userId),
         ]);
+    }
+
+    public function viewNotifications(): void
+    {
+        $userId = (int)(app_user()['user_id'] ?? 0);
+        $this->render('member/notifications', [
+            'title'         => 'Notifications',
+            'notifications' => $this->notifications->findByUser($userId),
+        ]);
+    }
+
+    public function markNotificationRead(): void
+    {
+        $userId = (int)(app_user()['user_id'] ?? 0);
+        $id     = (int)($_GET['id'] ?? 0);
+        if ($id > 0) {
+            $this->notifications->markRead($id, $userId);
+        }
+        header('Location: /index.php?route=notifications');
+        exit;
+    }
+
+    public function markAllNotificationsRead(): void
+    {
+        $userId = (int)(app_user()['user_id'] ?? 0);
+        $this->notifications->markAllRead($userId);
+        header('Location: /index.php?route=notifications');
+        exit;
     }
 
     public function addPerson(): void
@@ -64,11 +101,13 @@ final class MemberController extends BaseController
             exit;
         }
 
+        $userId = (int)(app_user()['user_id'] ?? 0);
         $this->render('member/person_edit', [
-            'title' => 'Edit Person',
-            'person' => $person,
-            'error' => $_SESSION['flash_error'] ?? null,
-            'success' => $_SESSION['flash_success'] ?? null,
+            'title'           => 'Edit Person',
+            'person'          => $person,
+            'error'           => $_SESSION['flash_error']   ?? null,
+            'success'         => $_SESSION['flash_success'] ?? null,
+            'pendingProposal' => $this->proposals->findPendingByPersonAndUser($id, $userId),
         ]);
         unset($_SESSION['flash_error'], $_SESSION['flash_success']);
     }
@@ -157,9 +196,12 @@ final class MemberController extends BaseController
             header('Location: /index.php?route=member/family-list');
             exit;
         }
+        $userId = (int)(app_user()['user_id'] ?? 0);
         $this->render('member/person_view', [
-            'title' => 'Person Profile',
-            'person' => $person,
+            'title'           => 'Person Profile',
+            'person'          => $person,
+            'attachments'     => $this->attachments->findByPersonId($id),
+            'pendingProposal' => $this->proposals->findPendingByPersonAndUser($id, $userId),
         ]);
     }
 
@@ -436,21 +478,70 @@ final class MemberController extends BaseController
         $motherPersonId = (int)($_POST['mother_person_id'] ?? 0);
         $spousePersonId = (int)($_POST['spouse_person_id'] ?? 0);
 
+        $newData = [
+            'full_name'        => $fullName,
+            'gender'           => $gender,
+            'date_of_birth'    => $this->normalizeDate($_POST['date_of_birth'] ?? null),
+            'birth_year'       => $this->normalizeInt($_POST['birth_year'] ?? null),
+            'birth_order'      => $this->normalizeInt($_POST['birth_order'] ?? null),
+            'date_of_death'    => $this->normalizeDate($_POST['date_of_death'] ?? null),
+            'blood_group'      => $this->nullableString($_POST['blood_group'] ?? null),
+            'occupation'       => $this->nullableString($_POST['occupation'] ?? null),
+            'mobile'           => $this->nullableString($_POST['mobile'] ?? null),
+            'email'            => $this->nullableString($_POST['email'] ?? null),
+            'address'          => $this->nullableString($_POST['address'] ?? null),
+            'current_location' => $this->nullableString($_POST['current_location'] ?? null),
+            'native_location'  => $this->nullableString($_POST['native_location'] ?? null),
+            'is_alive'         => isset($_POST['is_alive']) ? 1 : 0,
+        ];
+
+        if (app_user_role() === 'limited_member') {
+            $diff = [];
+            $tracked = ['full_name','gender','date_of_birth','birth_year','birth_order','date_of_death',
+                        'blood_group','occupation','mobile','email','address','current_location','native_location','is_alive'];
+            foreach ($tracked as $field) {
+                $old = (string)($person[$field] ?? '');
+                $new = (string)($newData[$field] ?? '');
+                if ($old !== $new) {
+                    $diff[$field] = ['old' => $old, 'new' => $new];
+                }
+            }
+            if (empty($diff)) {
+                $_SESSION['flash_success'] = 'No changes detected.';
+                header('Location: /index.php?route=member/edit-person&id=' . $id);
+                exit;
+            }
+            $userId = (int)(app_user()['user_id'] ?? 0);
+            $fields = implode(', ', array_keys($diff));
+            $this->proposals->create($id, $userId, $diff, 'Fields changed: ' . $fields);
+            $this->notifications->create(
+                $userId,
+                'custom',
+                'Edit submitted for review',
+                'Your changes to ' . $person['full_name'] . ' (' . $fields . ') have been submitted for admin review.',
+                $id,
+                '/index.php?route=member/person-view&id=' . $id
+            );
+            $_SESSION['flash_success'] = 'Your changes have been submitted for admin review.';
+            header('Location: /index.php?route=member/person-view&id=' . $id);
+            exit;
+        }
+
         $this->people->update($id, [
-            ':full_name' => $fullName,
-            ':gender' => $gender,
-            ':date_of_birth' => $this->normalizeDate($_POST['date_of_birth'] ?? null),
-            ':birth_year' => $this->normalizeInt($_POST['birth_year'] ?? null),
-            ':birth_order' => $this->normalizeInt($_POST['birth_order'] ?? null),
-            ':date_of_death' => $this->normalizeDate($_POST['date_of_death'] ?? null),
-            ':blood_group' => $this->nullableString($_POST['blood_group'] ?? null),
-            ':occupation' => $this->nullableString($_POST['occupation'] ?? null),
-            ':mobile' => $this->nullableString($_POST['mobile'] ?? null),
-            ':email' => $this->nullableString($_POST['email'] ?? null),
-            ':address' => $this->nullableString($_POST['address'] ?? null),
-            ':current_location' => $this->nullableString($_POST['current_location'] ?? null),
-            ':native_location' => $this->nullableString($_POST['native_location'] ?? null),
-            ':is_alive' => isset($_POST['is_alive']) ? 1 : 0,
+            ':full_name'        => $newData['full_name'],
+            ':gender'           => $newData['gender'],
+            ':date_of_birth'    => $newData['date_of_birth'],
+            ':birth_year'       => $newData['birth_year'],
+            ':birth_order'      => $newData['birth_order'],
+            ':date_of_death'    => $newData['date_of_death'],
+            ':blood_group'      => $newData['blood_group'],
+            ':occupation'       => $newData['occupation'],
+            ':mobile'           => $newData['mobile'],
+            ':email'            => $newData['email'],
+            ':address'          => $newData['address'],
+            ':current_location' => $newData['current_location'],
+            ':native_location'  => $newData['native_location'],
+            ':is_alive'         => $newData['is_alive'],
         ]);
 
         if ($fatherPersonId > 0) {

@@ -309,6 +309,63 @@ final class PersonModel
         $stmt->execute([':id' => $id]);
     }
 
+    public function findPotentialDuplicates(string $fullName, ?int $birthYear, ?string $gender): array
+    {
+        $fullName = trim($fullName);
+        if ($fullName === '') {
+            return [];
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT p.person_id, p.full_name, p.birth_year, p.gender,
+                    f.full_name AS father_name,
+                    m.full_name AS mother_name,
+                    s.full_name AS spouse_name
+             FROM persons p
+             LEFT JOIN persons f ON f.person_id = p.father_id
+             LEFT JOIN persons m ON m.person_id = p.mother_id
+             LEFT JOIN persons s ON s.person_id = p.spouse_id
+             WHERE (p.is_deleted = 0 OR p.is_deleted IS NULL)
+               AND p.full_name LIKE :q
+             ORDER BY p.full_name ASC
+             LIMIT 10'
+        );
+        $stmt->bindValue(':q', '%' . $fullName . '%', PDO::PARAM_STR);
+        $stmt->execute();
+        $rows = $stmt->fetchAll();
+
+        $scored = [];
+        $nameLower = mb_strtolower($fullName);
+        foreach ($rows as $row) {
+            $rowNameLower = mb_strtolower((string)$row['full_name']);
+            $score = 0;
+            if ($rowNameLower === $nameLower) {
+                $score += 60;
+            } else {
+                similar_text($nameLower, $rowNameLower, $pct);
+                $score += (int)($pct * 0.4);
+            }
+            if ($birthYear !== null && $birthYear > 0 && (int)($row['birth_year'] ?? 0) > 0) {
+                $diff = abs($birthYear - (int)$row['birth_year']);
+                if ($diff === 0) {
+                    $score += 30;
+                } elseif ($diff <= 2) {
+                    $score += 10;
+                }
+            }
+            if ($gender !== null && $gender !== 'unknown' && (string)($row['gender'] ?? '') === $gender) {
+                $score += 10;
+            }
+            if ($score >= 30) {
+                $row['match_score'] = $score;
+                $scored[] = $row;
+            }
+        }
+
+        usort($scored, static fn(array $a, array $b): int => $b['match_score'] <=> $a['match_score']);
+        return $scored;
+    }
+
     private function supportsParentColumns(): bool
     {
         if ($this->hasFatherColumn !== null && $this->hasMotherColumn !== null) {
