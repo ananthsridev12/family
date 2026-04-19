@@ -7,6 +7,14 @@
 <?php if (!empty($success)): ?>
   <div class="alert alert-success"><?= htmlspecialchars((string)$success, ENT_QUOTES, 'UTF-8') ?></div>
 <?php endif; ?>
+<?php if (!empty($pendingProposal)): ?>
+  <div class="alert alert-warning">
+    You have a pending edit proposal for this person (submitted <?= htmlspecialchars((string)$pendingProposal['created_at'], ENT_QUOTES, 'UTF-8') ?>). It is awaiting admin review. Submitting a new edit will create an additional proposal.
+  </div>
+<?php endif; ?>
+<?php if (app_user_role() === 'limited_member'): ?>
+  <div class="alert alert-info py-2">Your changes will be submitted for admin review before being applied.</div>
+<?php endif; ?>
 
 <form method="post" action="/index.php?route=member/edit-person" class="card card-body shadow-sm">
   <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">

@@ -29,10 +29,18 @@
   </div>
 </div>
 
+<?php if ((int)($pending_proposals ?? 0) > 0): ?>
+<div class="alert alert-warning d-flex align-items-center gap-2">
+  <strong><?= (int)$pending_proposals ?> pending edit proposal<?= $pending_proposals > 1 ? 's' : '' ?></strong> awaiting review.
+  <a href="/index.php?route=admin/proposals" class="btn btn-sm btn-warning ms-2">Review now</a>
+</div>
+<?php endif; ?>
+
 <div class="d-flex gap-2 flex-wrap">
   <a class="btn btn-primary btn-sm" href="/index.php?route=admin/add-person">Add Person</a>
   <a class="btn btn-outline-primary btn-sm" href="/index.php?route=admin/family-list">Family List</a>
   <a class="btn btn-outline-primary btn-sm" href="/index.php?route=member/add-marriage">Add Marriage</a>
   <a class="btn btn-outline-secondary btn-sm" href="/index.php?route=admin/reports">Reports</a>
+  <a class="btn btn-outline-secondary btn-sm" href="/index.php?route=admin/proposals">Edit Proposals</a>
 </div>
 <?php include __DIR__ . '/../layouts/app_end.php'; ?>
