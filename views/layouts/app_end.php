@@ -1,3 +1,4 @@
+      </div><!-- /.app-main -->
     </main>
   </div>
 </div>
