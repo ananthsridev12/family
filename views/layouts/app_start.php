@@ -1,13 +1,17 @@
 <?php include __DIR__ . '/header.php'; ?>
 <div class="container-fluid">
   <div class="row">
-    <aside class="col-lg-2 p-0 bg-light app-sidebar">
+    <aside class="col-lg-2 p-0 app-sidebar">
       <?php include __DIR__ . '/sidebar.php'; ?>
     </aside>
-    <main class="col-lg-10 p-4">
-      <div class="d-flex justify-content-between align-items-center border rounded bg-white p-2 mb-3 flex-wrap gap-2">
-        <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu">Menu</button>
-        <div class="d-flex align-items-center gap-2 ms-auto">
+    <main class="col-lg-10 p-0">
+      <div class="app-topbar">
+        <div class="topbar-left">
+          <button class="btn btn-outline-secondary btn-sm d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-label="Menu">
+            <span>&#9776;</span>
+          </button>
+        </div>
+        <div class="topbar-right">
           <?php if (!empty(app_user())): ?>
           <?php
             $__unread = 0;
@@ -17,25 +21,11 @@
                 $__unread = (int)$__notifStmt->fetchColumn();
             } catch (Throwable $__e) { /* table may not exist yet */ }
           ?>
-          <a href="/index.php?route=notifications" class="btn btn-outline-secondary btn-sm position-relative" title="Notifications">
-            &#128276;
-            <?php if ($__unread > 0): ?>
-            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.65rem;">
-              <?= $__unread > 99 ? '99+' : $__unread ?>
-            </span>
-            <?php endif; ?>
-          </a>
-          <div class="small text-muted me-2">
-            <strong><?= htmlspecialchars((string)(app_user()['name'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?></strong>
-            <?php if (!empty(app_user()['person_id'])): ?>
-              <span class="ms-1">· Person #<?= (int)(app_user()['person_id'] ?? 0) ?></span>
-            <?php endif; ?>
-          </div>
-          <form method="post" action="/index.php?route=set-pov" class="d-flex align-items-center gap-2">
+          <form method="post" action="/index.php?route=set-pov" class="pov-form">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="redirect_to" value="<?= htmlspecialchars((string)($_SERVER['REQUEST_URI'] ?? '/index.php'), ENT_QUOTES, 'UTF-8') ?>">
-            <label class="form-label mb-0 small text-muted">POV</label>
-            <select class="form-select form-select-sm" name="pov_person_id" style="min-width: 240px;">
+            <label>POV</label>
+            <select class="form-select form-select-sm" name="pov_person_id">
               <?php $activePov = current_pov_id(); ?>
               <?php foreach (available_pov_people() as $p): ?>
               <option value="<?= (int)$p['person_id'] ?>" <?= $activePov === (int)$p['person_id'] ? 'selected' : '' ?>>
@@ -45,6 +35,19 @@
             </select>
             <button class="btn btn-sm btn-primary" type="submit">Apply</button>
           </form>
+          <a href="/index.php?route=notifications" class="notif-btn position-relative" title="Notifications">
+            &#128276;
+            <?php if ($__unread > 0): ?>
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.65rem;min-width:18px;">
+              <?= $__unread > 99 ? '99+' : $__unread ?>
+            </span>
+            <?php endif; ?>
+          </a>
+          <div class="user-badge">
+            <span class="avatar"><?= strtoupper(mb_substr((string)(app_user()['name'] ?? 'U'), 0, 1)) ?></span>
+            <?= htmlspecialchars((string)(app_user()['name'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?>
+          </div>
           <?php endif; ?>
         </div>
       </div>
+      <div class="app-main">
