@@ -10,6 +10,7 @@ require_once __DIR__ . '/models/UserModel.php';
 require_once __DIR__ . '/models/AttachmentModel.php';
 require_once __DIR__ . '/models/NotificationModel.php';
 require_once __DIR__ . '/models/EditProposalModel.php';
+require_once __DIR__ . '/models/InviteLinkModel.php';
 require_once __DIR__ . '/services/RelationshipEngine.php';
 require_once __DIR__ . '/services/ReminderService.php';
 require_once __DIR__ . '/controllers/BaseController.php';
@@ -18,6 +19,7 @@ require_once __DIR__ . '/controllers/PublicController.php';
 require_once __DIR__ . '/controllers/AdminController.php';
 require_once __DIR__ . '/controllers/MemberController.php';
 require_once __DIR__ . '/controllers/PersonController.php';
+require_once __DIR__ . '/controllers/JoinController.php';
 
 function app_db(): PDO
 {
@@ -128,6 +130,7 @@ $publicController = new PublicController($db);
 $adminController = new AdminController($db);
 $memberController = new MemberController($db);
 $personController = new PersonController($db);
+$joinController = new JoinController($db);
 
 switch ($route) {
     case 'home':
@@ -147,6 +150,17 @@ switch ($route) {
         break;
     case 'contact':
         $publicController->contact();
+        break;
+
+    case 'join':
+        if ($method === 'POST') {
+            $joinController->submit();
+        } else {
+            $joinController->show();
+        }
+        break;
+    case 'join/welcome':
+        $joinController->welcome();
         break;
 
     case 'login':
@@ -351,6 +365,19 @@ switch ($route) {
     case 'admin/reject-proposal':
         require_role('admin');
         $adminController->rejectProposal();
+        break;
+
+    case 'admin/invite-links':
+        require_role('admin');
+        $adminController->inviteLinks();
+        break;
+    case 'admin/create-invite':
+        require_role('admin');
+        $adminController->createInvite();
+        break;
+    case 'admin/deactivate-invite':
+        require_role('admin');
+        $adminController->deactivateInvite();
         break;
 
     default:
