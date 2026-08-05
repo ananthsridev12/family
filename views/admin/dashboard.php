@@ -53,6 +53,7 @@
       <a class="btn btn-outline-primary btn-sm btn-pill" href="/index.php?route=member/add-marriage">Add Marriage</a>
       <a class="btn btn-outline-secondary btn-sm btn-pill" href="/index.php?route=admin/reports">Reports</a>
       <a class="btn btn-outline-secondary btn-sm btn-pill" href="/index.php?route=admin/proposals">Edit Proposals</a>
+      <a class="btn btn-outline-secondary btn-sm btn-pill" href="/index.php?route=admin/invite-links">Invite Links</a>
     </div>
   </div>
 </div>

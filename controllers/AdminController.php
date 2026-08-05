@@ -10,6 +10,7 @@ final class AdminController extends BaseController
     private AttachmentModel $attachments;
     private NotificationModel $notifications;
     private EditProposalModel $proposals;
+    private InviteLinkModel $invites;
 
     public function __construct(PDO $db)
     {
@@ -21,6 +22,7 @@ final class AdminController extends BaseController
         $this->attachments   = new AttachmentModel($db);
         $this->notifications = new NotificationModel($db);
         $this->proposals     = new EditProposalModel($db);
+        $this->invites       = new InviteLinkModel($db);
     }
 
     public function dashboard(): void
@@ -995,5 +997,51 @@ final class AdminController extends BaseController
             'marriages' => $marriages,
             'families' => $familiesWithKids,
         ];
+    }
+
+    public function inviteLinks(): void
+    {
+        $links = [];
+        try { $links = $this->invites->list(); } catch (Throwable $e) {}
+        $flash = $_SESSION['flash_success'] ?? null;
+        unset($_SESSION['flash_success']);
+        $this->render('admin/invite_links', ['title' => 'Invite Links', 'links' => $links, 'flash' => $flash]);
+    }
+
+    public function createInvite(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(403);
+            echo 'Forbidden';
+            exit;
+        }
+        $label    = trim((string)($_POST['label'] ?? ''));
+        $maxUses  = max(0, (int)($_POST['max_uses'] ?? 0));
+        $expiresRaw = trim((string)($_POST['expires_at'] ?? ''));
+        $expiresAt = ($expiresRaw !== '') ? $expiresRaw . ' 23:59:59' : null;
+        $userId = (int)(app_user()['user_id'] ?? 0);
+        try {
+            $this->invites->create($userId, $label, $maxUses, $expiresAt);
+            $_SESSION['flash_success'] = 'Invite link created successfully.';
+        } catch (Throwable $e) {
+            $_SESSION['flash_success'] = 'Error creating link: ' . $e->getMessage();
+        }
+        header('Location: /index.php?route=admin/invite-links');
+        exit;
+    }
+
+    public function deactivateInvite(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(403);
+            echo 'Forbidden';
+            exit;
+        }
+        $linkId = (int)($_POST['link_id'] ?? 0);
+        if ($linkId > 0) {
+            try { $this->invites->deactivate($linkId); } catch (Throwable $e) {}
+        }
+        header('Location: /index.php?route=admin/invite-links');
+        exit;
     }
 }
