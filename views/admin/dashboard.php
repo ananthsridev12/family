@@ -34,13 +34,22 @@
   </div>
 </div>
 
+<?php if ((int)($pending_add_proposals ?? 0) > 0): ?>
+<div class="alert alert-warning d-flex align-items-center gap-3 mb-3">
+  <span style="font-size:1.3rem;">&#10010;</span>
+  <div class="flex-grow-1">
+    <strong><?= (int)$pending_add_proposals ?> new person submission<?= $pending_add_proposals > 1 ? 's' : '' ?></strong> awaiting approval.
+  </div>
+  <a href="/index.php?route=admin/add-proposals" class="btn btn-sm btn-warning btn-pill">Review</a>
+</div>
+<?php endif; ?>
 <?php if ((int)($pending_proposals ?? 0) > 0): ?>
-<div class="alert alert-warning d-flex align-items-center gap-3 mb-4">
+<div class="alert alert-info d-flex align-items-center gap-3 mb-4">
   <span style="font-size:1.3rem;">&#128196;</span>
   <div class="flex-grow-1">
     <strong><?= (int)$pending_proposals ?> pending edit proposal<?= $pending_proposals > 1 ? 's' : '' ?></strong> awaiting your review.
   </div>
-  <a href="/index.php?route=admin/proposals" class="btn btn-sm btn-warning btn-pill">Review now</a>
+  <a href="/index.php?route=admin/proposals" class="btn btn-sm btn-primary btn-pill">Review now</a>
 </div>
 <?php endif; ?>
 

@@ -9,6 +9,7 @@ final class MemberController extends BaseController
     private AttachmentModel $attachments;
     private NotificationModel $notifications;
     private EditProposalModel $proposals;
+    private PersonAddProposalModel $addProposals;
 
     public function __construct(PDO $db)
     {
@@ -19,6 +20,7 @@ final class MemberController extends BaseController
         $this->attachments   = new AttachmentModel($db);
         $this->notifications = new NotificationModel($db);
         $this->proposals     = new EditProposalModel($db);
+        $this->addProposals  = new PersonAddProposalModel($db);
     }
 
     public function dashboard(): void
@@ -339,112 +341,49 @@ final class MemberController extends BaseController
             exit;
         }
 
-        $currentRole = app_user_role();
-        $currentUserId = (int)(app_user()['user_id'] ?? 0);
-
-        $existingPersonId = (int)($_POST['existing_person_id'] ?? 0);
-        $referencePersonId = (int)($_POST['reference_person_id'] ?? 0);
         $fullName = trim((string)($_POST['full_name'] ?? ''));
-        $gender = (string)($_POST['gender'] ?? 'unknown');
-        $dateOfBirth = $this->normalizeDate($_POST['date_of_birth'] ?? null);
-        $birthYear = $this->normalizeInt($_POST['birth_year'] ?? null);
-        $dateOfDeath = $this->normalizeDate($_POST['date_of_death'] ?? null);
-        $currentLocation = $this->nullableString($_POST['current_location'] ?? null);
-        $nativeLocation = $this->nullableString($_POST['native_location'] ?? null);
-        $bloodGroup = $this->nullableString($_POST['blood_group'] ?? null);
-        $occupation = $this->nullableString($_POST['occupation'] ?? null);
-        $mobile = $this->nullableString($_POST['mobile'] ?? null);
-        $email = $this->nullableString($_POST['email'] ?? null);
-        $address = $this->nullableString($_POST['address'] ?? null);
-        $isAlive = isset($_POST['is_alive']) ? 1 : 0;
-        $relationType = (string)($_POST['relation_type'] ?? 'none');
-        $parentType = (string)($_POST['parent_type'] ?? 'father');
-        $parentPersonId = (int)($_POST['parent_person_id'] ?? 0); // backward compatibility
-        $parentLinkType = (string)($_POST['parent_link_type'] ?? 'father'); // backward compatibility
-        $fatherPersonId = (int)($_POST['father_person_id'] ?? 0);
-        $motherPersonId = (int)($_POST['mother_person_id'] ?? 0);
-        $spousePersonId = (int)($_POST['spouse_person_id'] ?? 0);
-        $birthOrder = $this->normalizeInt($_POST['birth_order'] ?? null);
-        $spouseMarriageDate = $this->normalizeDate($_POST['spouse_marriage_date'] ?? null);
-
-        if (!in_array($gender, ['male', 'female', 'other', 'unknown'], true)) {
-            $gender = 'unknown';
-        }
-        if (!in_array($relationType, ['none', 'child', 'spouse', 'father', 'mother', 'brother', 'sister', 'grandfather', 'grandmother'], true)) {
-            $relationType = 'none';
-        }
-        if ($currentRole === 'limited_member' && in_array($relationType, ['brother', 'sister'], true)) {
-            $relationType = 'none';
-        }
-        if (!in_array($parentType, ['father', 'mother', 'adoptive', 'step'], true)) {
-            $parentType = 'father';
-        }
-        if (!in_array($parentLinkType, ['father', 'mother', 'adoptive', 'step'], true)) {
-            $parentLinkType = 'father';
-        }
-
-        if ($existingPersonId <= 0 && $fullName === '') {
-            $_SESSION['flash_error'] = 'Select existing person or enter new full name.';
+        if ($fullName === '') {
+            $_SESSION['flash_error'] = 'Please enter the person\'s full name.';
             header('Location: /index.php?route=member/add-person');
             exit;
         }
 
-        $this->db->beginTransaction();
+        $gender = (string)($_POST['gender'] ?? 'unknown');
+        if (!in_array($gender, ['male', 'female', 'other', 'unknown'], true)) {
+            $gender = 'unknown';
+        }
+
+        $siblingsRaw = (string)($_POST['siblings_json'] ?? '[]');
+        $siblingsData = json_decode($siblingsRaw, true);
+        if (!is_array($siblingsData)) {
+            $siblingsData = [];
+        }
+
+        $proposedData = [
+            'full_name'         => $fullName,
+            'gender'            => $gender,
+            'birth_year'        => (int)($_POST['birth_year'] ?? 0) ?: null,
+            'date_of_birth'     => $this->normalizeDate($_POST['date_of_birth'] ?? null),
+            'date_of_death'     => $this->normalizeDate($_POST['date_of_death'] ?? null),
+            'is_alive'          => isset($_POST['is_alive']) ? 1 : 0,
+            'father_person_id'  => (int)($_POST['father_person_id'] ?? 0) ?: null,
+            'father_name'       => trim((string)($_POST['father_name'] ?? '')),
+            'father_birth_year' => (int)($_POST['father_birth_year'] ?? 0) ?: null,
+            'mother_person_id'  => (int)($_POST['mother_person_id'] ?? 0) ?: null,
+            'mother_name'       => trim((string)($_POST['mother_name'] ?? '')),
+            'mother_birth_year' => (int)($_POST['mother_birth_year'] ?? 0) ?: null,
+            'total_children'    => max(1, (int)($_POST['total_children'] ?? 1)),
+            'person_position'   => max(1, (int)($_POST['person_position'] ?? 1)),
+            'siblings'          => $siblingsData,
+            'admin_note'        => trim((string)($_POST['admin_note'] ?? '')),
+        ];
+
+        $currentUserId = (int)(app_user()['user_id'] ?? 0);
         try {
-            $targetPersonId = $existingPersonId;
-            if ($targetPersonId <= 0) {
-                $targetPersonId = $this->people->create([
-                    ':full_name' => $fullName,
-                    ':gender' => $gender,
-                    ':date_of_birth' => $dateOfBirth,
-                    ':birth_year' => $birthYear,
-                    ':date_of_death' => $dateOfDeath,
-                    ':blood_group' => $bloodGroup,
-                    ':occupation' => $occupation,
-                    ':mobile' => $mobile,
-                    ':email' => $email,
-                    ':address' => $address,
-                    ':current_location' => $currentLocation,
-                    ':native_location' => $nativeLocation,
-                    ':is_alive' => $isAlive,
-                    ':father_id' => null,
-                    ':mother_id' => null,
-                    ':spouse_id' => null,
-                    ':branch_id' => null,
-                    ':birth_order' => $birthOrder,
-                    ':created_by' => $currentUserId > 0 ? $currentUserId : null,
-                    ':editable_scope' => 'self_branch',
-                    ':is_locked' => 0,
-                    ':is_deleted' => 0,
-                ]);
-            }
-
-            if ($parentPersonId > 0) {
-                $this->linkParentChild($parentPersonId, $targetPersonId, $parentLinkType);
-            }
-            if ($fatherPersonId > 0) {
-                $this->linkParentChild($fatherPersonId, $targetPersonId, 'father');
-            }
-            if ($motherPersonId > 0) {
-                $this->linkParentChild($motherPersonId, $targetPersonId, 'mother');
-            }
-            if ($spousePersonId > 0 && $spousePersonId !== $targetPersonId) {
-                $this->applyRelation($targetPersonId, $spousePersonId, 'spouse', 'father', null, $spouseMarriageDate);
-            }
-
-            $defaultAnchorId = (int)(app_user()['person_id'] ?? 0);
-            $anchorId = $referencePersonId > 0 ? $referencePersonId : ($defaultAnchorId > 0 ? $defaultAnchorId : (int)$targetPersonId);
-            if ($relationType !== 'none' && $anchorId > 0 && $targetPersonId > 0) {
-                $this->applyRelation($anchorId, $targetPersonId, $relationType, $parentType, $birthOrder, $spouseMarriageDate);
-            }
-
-            $this->db->commit();
-            $_SESSION['flash_success'] = 'Person saved successfully.';
+            $this->addProposals->create($currentUserId, $proposedData);
+            $_SESSION['flash_success'] = 'Your submission is under review. You\'ll be notified once an admin approves it.';
         } catch (Throwable $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
-            $_SESSION['flash_error'] = $e->getMessage();
+            $_SESSION['flash_error'] = 'Could not submit: ' . $e->getMessage();
         }
 
         header('Location: /index.php?route=member/add-person');

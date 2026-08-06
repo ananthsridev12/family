@@ -11,6 +11,7 @@ final class AdminController extends BaseController
     private NotificationModel $notifications;
     private EditProposalModel $proposals;
     private InviteLinkModel $invites;
+    private PersonAddProposalModel $addProposals;
 
     public function __construct(PDO $db)
     {
@@ -23,6 +24,7 @@ final class AdminController extends BaseController
         $this->notifications = new NotificationModel($db);
         $this->proposals     = new EditProposalModel($db);
         $this->invites       = new InviteLinkModel($db);
+        $this->addProposals  = new PersonAddProposalModel($db);
     }
 
     public function dashboard(): void
@@ -31,13 +33,16 @@ final class AdminController extends BaseController
         try { (new ReminderService($this->db))->generateForUser($userId); } catch (Throwable $e) {}
         $unread = 0;
         $pendingProposals = 0;
+        $pendingAddProposals = 0;
         try { $unread = $this->notifications->countUnread($userId); } catch (Throwable $e) {}
         try { $pendingProposals = $this->proposals->countPending(); } catch (Throwable $e) {}
+        try { $pendingAddProposals = $this->addProposals->countPending(); } catch (Throwable $e) {}
         $this->render('admin/dashboard', [
-            'title'             => 'Admin Dashboard',
-            'stats'             => $this->collectStats(),
-            'unread_count'      => $unread,
-            'pending_proposals' => $pendingProposals,
+            'title'                => 'Admin Dashboard',
+            'stats'                => $this->collectStats(),
+            'unread_count'         => $unread,
+            'pending_proposals'    => $pendingProposals,
+            'pending_add_proposals' => $pendingAddProposals,
         ]);
     }
 
@@ -997,6 +1002,182 @@ final class AdminController extends BaseController
             'marriages' => $marriages,
             'families' => $familiesWithKids,
         ];
+    }
+
+    public function addProposalsList(): void
+    {
+        $proposals = [];
+        try { $proposals = $this->addProposals->findPending(); } catch (Throwable $e) {}
+        $this->render('admin/add_proposals_pending', ['title' => 'New Person Proposals', 'proposals' => $proposals]);
+    }
+
+    public function reviewAddProposal(): void
+    {
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            header('Location: /index.php?route=admin/add-proposals');
+            exit;
+        }
+        $proposal = null;
+        try { $proposal = $this->addProposals->findById($id); } catch (Throwable $e) {}
+        if ($proposal === null) {
+            header('Location: /index.php?route=admin/add-proposals');
+            exit;
+        }
+        $d = json_decode((string)$proposal['proposed_data'], true) ?? [];
+        $linkedPersons = [];
+        $ids = array_filter([(int)($d['father_person_id'] ?? 0), (int)($d['mother_person_id'] ?? 0)]);
+        foreach ($ids as $pid) {
+            $p = null;
+            try { $p = $this->people->findById($pid); } catch (Throwable $e) {}
+            if ($p !== null) $linkedPersons[$pid] = $p;
+        }
+        $this->render('admin/add_proposal_review', [
+            'title'         => 'Review: ' . ($d['full_name'] ?? 'Proposal'),
+            'proposal'      => $proposal,
+            'linkedPersons' => $linkedPersons,
+        ]);
+    }
+
+    public function approveAddProposal(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(403); echo 'Forbidden'; exit;
+        }
+        $id = (int)($_POST['proposal_id'] ?? 0);
+        $notes = trim((string)($_POST['admin_notes'] ?? ''));
+        $proposal = null;
+        try { $proposal = $this->addProposals->findById($id); } catch (Throwable $e) {}
+        if ($proposal === null) {
+            header('Location: /index.php?route=admin/add-proposals'); exit;
+        }
+        $d = json_decode((string)$proposal['proposed_data'], true) ?? [];
+        $adminId = (int)(app_user()['user_id'] ?? 0);
+
+        $this->db->beginTransaction();
+        try {
+            $fatherId = (int)($d['father_person_id'] ?? 0);
+            if ($fatherId <= 0 && !empty($d['father_name'])) {
+                $fatherId = $this->people->create([
+                    ':full_name' => $d['father_name'], ':gender' => 'male',
+                    ':date_of_birth' => null, ':birth_year' => $d['father_birth_year'] ?? null,
+                    ':date_of_death' => null, ':blood_group' => null, ':occupation' => null,
+                    ':mobile' => null, ':email' => null, ':address' => null,
+                    ':current_location' => null, ':native_location' => null, ':is_alive' => 1,
+                    ':father_id' => null, ':mother_id' => null, ':spouse_id' => null,
+                    ':branch_id' => null, ':birth_order' => null, ':created_by' => $adminId,
+                    ':editable_scope' => 'all', ':is_locked' => 0, ':is_deleted' => 0,
+                ]);
+            }
+            $motherId = (int)($d['mother_person_id'] ?? 0);
+            if ($motherId <= 0 && !empty($d['mother_name'])) {
+                $motherId = $this->people->create([
+                    ':full_name' => $d['mother_name'], ':gender' => 'female',
+                    ':date_of_birth' => null, ':birth_year' => $d['mother_birth_year'] ?? null,
+                    ':date_of_death' => null, ':blood_group' => null, ':occupation' => null,
+                    ':mobile' => null, ':email' => null, ':address' => null,
+                    ':current_location' => null, ':native_location' => null, ':is_alive' => 1,
+                    ':father_id' => null, ':mother_id' => null, ':spouse_id' => null,
+                    ':branch_id' => null, ':birth_order' => null, ':created_by' => $adminId,
+                    ':editable_scope' => 'all', ':is_locked' => 0, ':is_deleted' => 0,
+                ]);
+            }
+            $personId = $this->people->create([
+                ':full_name'        => (string)($d['full_name'] ?? ''),
+                ':gender'           => (string)($d['gender'] ?? 'unknown'),
+                ':date_of_birth'    => $d['date_of_birth'] ?? null,
+                ':birth_year'       => $d['birth_year'] ?? null,
+                ':date_of_death'    => $d['date_of_death'] ?? null,
+                ':blood_group'      => null,
+                ':occupation'       => null,
+                ':mobile'           => null,
+                ':email'            => null,
+                ':address'          => null,
+                ':current_location' => null,
+                ':native_location'  => null,
+                ':is_alive'         => (int)($d['is_alive'] ?? 1),
+                ':father_id'        => $fatherId > 0 ? $fatherId : null,
+                ':mother_id'        => $motherId > 0 ? $motherId : null,
+                ':spouse_id'        => null,
+                ':branch_id'        => null,
+                ':birth_order'      => (int)($d['person_position'] ?? 1) > 0 ? (int)($d['person_position'] ?? 1) : null,
+                ':created_by'       => $adminId,
+                ':editable_scope'   => 'all',
+                ':is_locked'        => 0,
+                ':is_deleted'       => 0,
+            ]);
+
+            foreach (($d['siblings'] ?? []) as $sib) {
+                $sibName = trim((string)($sib['name'] ?? ''));
+                if ($sibName === '') continue;
+                $this->people->create([
+                    ':full_name'        => $sibName,
+                    ':gender'           => in_array($sib['gender'] ?? '', ['male','female','other'], true) ? $sib['gender'] : 'unknown',
+                    ':date_of_birth'    => null, ':birth_year' => null, ':date_of_death' => null,
+                    ':blood_group'      => null, ':occupation' => null, ':mobile' => null,
+                    ':email'            => null, ':address' => null, ':current_location' => null,
+                    ':native_location'  => null, ':is_alive' => 1,
+                    ':father_id'        => $fatherId > 0 ? $fatherId : null,
+                    ':mother_id'        => $motherId > 0 ? $motherId : null,
+                    ':spouse_id'        => null, ':branch_id' => null,
+                    ':birth_order'      => (int)($sib['pos'] ?? 0) > 0 ? (int)$sib['pos'] : null,
+                    ':created_by'       => $adminId, ':editable_scope' => 'all',
+                    ':is_locked'        => 0, ':is_deleted' => 0,
+                ]);
+            }
+
+            $this->addProposals->approve($id, $adminId, $notes);
+
+            try {
+                $nm = new NotificationModel($this->db);
+                $nm->create(
+                    (int)$proposal['proposed_by'],
+                    $personId,
+                    'proposal_approved',
+                    'Your person submission was approved',
+                    (string)($d['full_name'] ?? 'The person') . ' has been added to the family tree.',
+                    '/index.php?route=admin/person-view&id=' . $personId
+                );
+            } catch (Throwable $e) {}
+
+            $this->db->commit();
+            $_SESSION['flash_success'] = htmlspecialchars((string)($d['full_name'] ?? 'Person'), ENT_QUOTES, 'UTF-8') . ' created successfully (Person #' . $personId . ').';
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            $_SESSION['flash_error'] = 'Could not approve: ' . $e->getMessage();
+        }
+        header('Location: /index.php?route=admin/add-proposals');
+        exit;
+    }
+
+    public function rejectAddProposal(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(403); echo 'Forbidden'; exit;
+        }
+        $id = (int)($_POST['proposal_id'] ?? 0);
+        $notes = trim((string)($_POST['admin_notes'] ?? ''));
+        $adminId = (int)(app_user()['user_id'] ?? 0);
+        $proposal = null;
+        try { $proposal = $this->addProposals->findById($id); } catch (Throwable $e) {}
+        if ($proposal !== null) {
+            try {
+                $this->addProposals->reject($id, $adminId, $notes);
+                $d = json_decode((string)$proposal['proposed_data'], true) ?? [];
+                $nm = new NotificationModel($this->db);
+                $nm->create(
+                    (int)$proposal['proposed_by'],
+                    null,
+                    'proposal_rejected',
+                    'Your person submission was not approved',
+                    'Submission for "' . ($d['full_name'] ?? 'Unknown') . '": ' . ($notes ?: 'No reason given.'),
+                    null
+                );
+            } catch (Throwable $e) {}
+        }
+        $_SESSION['flash_success'] = 'Proposal rejected.';
+        header('Location: /index.php?route=admin/add-proposals');
+        exit;
     }
 
     public function inviteLinks(): void

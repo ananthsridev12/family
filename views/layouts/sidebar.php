@@ -31,6 +31,7 @@ function _nav_active(string $route, string $current): string {
       <?php if ($role === 'admin'): ?>
       <div class="nav-divider"></div>
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/users', $currentRoute) ?>" href="/index.php?route=admin/users"><span>&#128101;</span> Users</a></li>
+      <li class="nav-item"><a class="nav-link<?= _nav_active('admin/add-proposals', $currentRoute) ?>" href="/index.php?route=admin/add-proposals"><span>&#10010;</span> New Submissions</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/proposals', $currentRoute) ?>" href="/index.php?route=admin/proposals"><span>&#128196;</span> Edit Proposals</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/invite-links', $currentRoute) ?>" href="/index.php?route=admin/invite-links"><span>&#128279;</span> Invite Links</a></li>
       <?php endif; ?>
