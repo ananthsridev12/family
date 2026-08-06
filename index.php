@@ -11,6 +11,7 @@ require_once __DIR__ . '/models/AttachmentModel.php';
 require_once __DIR__ . '/models/NotificationModel.php';
 require_once __DIR__ . '/models/EditProposalModel.php';
 require_once __DIR__ . '/models/InviteLinkModel.php';
+require_once __DIR__ . '/models/PersonAddProposalModel.php';
 require_once __DIR__ . '/services/RelationshipEngine.php';
 require_once __DIR__ . '/services/ReminderService.php';
 require_once __DIR__ . '/controllers/BaseController.php';
@@ -365,6 +366,23 @@ switch ($route) {
     case 'admin/reject-proposal':
         require_role('admin');
         $adminController->rejectProposal();
+        break;
+
+    case 'admin/add-proposals':
+        require_role('admin');
+        $adminController->addProposalsList();
+        break;
+    case 'admin/review-add-proposal':
+        require_role('admin');
+        $adminController->reviewAddProposal();
+        break;
+    case 'admin/approve-add-proposal':
+        require_role('admin');
+        $adminController->approveAddProposal();
+        break;
+    case 'admin/reject-add-proposal':
+        require_role('admin');
+        $adminController->rejectAddProposal();
         break;
 
     case 'admin/invite-links':
