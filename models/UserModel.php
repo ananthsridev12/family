@@ -29,7 +29,7 @@ final class UserModel
     public function list(int $limit = 200): array
     {
         $stmt = $this->db->prepare(
-            'SELECT user_id, username, name, email, role, is_active, created_at
+            'SELECT user_id, username, name, email, role, is_active, person_id, permissions, created_at
              FROM users
              ORDER BY user_id DESC
              LIMIT :limit'
@@ -37,6 +37,28 @@ final class UserModel
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll() ?: [];
+    }
+
+    public function updatePermissions(int $userId, array $permissions): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE users SET permissions = :permissions WHERE user_id = :id'
+        );
+        $stmt->execute([
+            ':permissions' => json_encode($permissions, JSON_UNESCAPED_UNICODE),
+            ':id'          => $userId,
+        ]);
+    }
+
+    public function findById(int $userId): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT user_id, username, name, email, role, is_active, person_id, permissions
+             FROM users WHERE user_id = :id LIMIT 1'
+        );
+        $stmt->execute([':id' => $userId]);
+        $row = $stmt->fetch();
+        return $row ?: null;
     }
 
     public function create(array $data): int

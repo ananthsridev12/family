@@ -95,7 +95,7 @@
             <label class="form-label">Label <span class="text-muted fw-normal">(optional)</span></label>
             <input class="form-control" name="label" placeholder="e.g. For cousins in Chennai">
           </div>
-          <div class="row g-3">
+          <div class="row g-3 mb-3">
             <div class="col-6">
               <label class="form-label">Max uses <span class="text-muted fw-normal">(0 = unlimited)</span></label>
               <input class="form-control" name="max_uses" type="number" min="0" value="0">
@@ -104,6 +104,22 @@
               <label class="form-label">Expires on <span class="text-muted fw-normal">(optional)</span></label>
               <input class="form-control" name="expires_at" type="date">
             </div>
+          </div>
+          <hr class="my-3">
+          <p class="fw-bold mb-1" style="font-size:.88rem;">Default permissions for people who join via this link</p>
+          <div class="mb-3">
+            <label class="form-label">Edit access</label>
+            <select class="form-select" name="default_edit_scope">
+              <option value="self">Own profile only</option>
+              <option value="children" selected>Own profile + children</option>
+              <option value="grandchildren">Own profile + children + grandchildren</option>
+              <option value="all">All persons</option>
+              <option value="none">None (view only)</option>
+            </select>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="default_can_add_person" id="inviteCanAdd" value="1" checked>
+            <label class="form-check-label" for="inviteCanAdd">Can submit new persons for approval</label>
           </div>
         </div>
         <div class="modal-footer border-0 pt-0">

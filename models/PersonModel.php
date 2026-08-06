@@ -309,6 +309,49 @@ final class PersonModel
         $stmt->execute([':id' => $id]);
     }
 
+    /**
+     * Check if $targetId falls within the edit scope of a user whose linked person is $userPersonId.
+     * Scopes: 'self', 'children', 'grandchildren', 'all'
+     */
+    public function isEditableByScope(int $targetId, int $userPersonId, string $scope): bool
+    {
+        if ($scope === 'all') {
+            return true;
+        }
+        if ($targetId === $userPersonId) {
+            return true;
+        }
+        if ($scope === 'self') {
+            return false;
+        }
+        // children: target's father or mother is the user's person
+        $stmt = $this->db->prepare(
+            'SELECT 1 FROM persons
+             WHERE person_id = :tid
+               AND (father_id = :pid OR mother_id = :pid)
+               AND (is_deleted = 0 OR is_deleted IS NULL)
+             LIMIT 1'
+        );
+        $stmt->execute([':tid' => $targetId, ':pid' => $userPersonId]);
+        if ((bool)$stmt->fetchColumn()) {
+            return true;
+        }
+        if ($scope === 'children') {
+            return false;
+        }
+        // grandchildren: target's parent is a child of the user's person
+        $stmt2 = $this->db->prepare(
+            'SELECT 1 FROM persons t
+             INNER JOIN persons p ON (p.person_id = t.father_id OR p.person_id = t.mother_id)
+             WHERE t.person_id = :tid
+               AND (p.father_id = :pid OR p.mother_id = :pid)
+               AND (t.is_deleted = 0 OR t.is_deleted IS NULL)
+             LIMIT 1'
+        );
+        $stmt2->execute([':tid' => $targetId, ':pid' => $userPersonId]);
+        return (bool)$stmt2->fetchColumn();
+    }
+
     public function findPotentialDuplicates(string $fullName, ?int $birthYear, ?string $gender): array
     {
         $fullName = trim($fullName);

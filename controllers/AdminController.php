@@ -1004,6 +1004,33 @@ final class AdminController extends BaseController
         ];
     }
 
+    public function updateUserPermissions(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(403); echo 'Forbidden'; exit;
+        }
+        $userId = (int)($_POST['user_id'] ?? 0);
+        if ($userId <= 0 || $userId === (int)(app_user()['user_id'] ?? 0)) {
+            header('Location: /index.php?route=admin/users'); exit;
+        }
+        $editScope     = (string)($_POST['edit_scope'] ?? 'self');
+        $canAddPerson  = isset($_POST['can_add_person']);
+        if (!in_array($editScope, ['none', 'self', 'children', 'grandchildren', 'all'], true)) {
+            $editScope = 'self';
+        }
+        $permissions = [
+            'edit_scope'     => $editScope,
+            'can_add_person' => $canAddPerson,
+        ];
+        try {
+            $this->users->updatePermissions($userId, $permissions);
+            $_SESSION['flash_success'] = 'Permissions updated.';
+        } catch (Throwable $e) {
+            $_SESSION['flash_error'] = 'Failed: ' . $e->getMessage();
+        }
+        header('Location: /index.php?route=admin/users'); exit;
+    }
+
     public function addProposalsList(): void
     {
         $proposals = [];
@@ -1196,13 +1223,21 @@ final class AdminController extends BaseController
             echo 'Forbidden';
             exit;
         }
-        $label    = trim((string)($_POST['label'] ?? ''));
-        $maxUses  = max(0, (int)($_POST['max_uses'] ?? 0));
+        $label      = trim((string)($_POST['label'] ?? ''));
+        $maxUses    = max(0, (int)($_POST['max_uses'] ?? 0));
         $expiresRaw = trim((string)($_POST['expires_at'] ?? ''));
-        $expiresAt = ($expiresRaw !== '') ? $expiresRaw . ' 23:59:59' : null;
+        $expiresAt  = ($expiresRaw !== '') ? $expiresRaw . ' 23:59:59' : null;
+        $editScope  = (string)($_POST['default_edit_scope'] ?? 'children');
+        if (!in_array($editScope, ['none', 'self', 'children', 'grandchildren', 'all'], true)) {
+            $editScope = 'children';
+        }
+        $defaultPermissions = [
+            'edit_scope'     => $editScope,
+            'can_add_person' => isset($_POST['default_can_add_person']),
+        ];
         $userId = (int)(app_user()['user_id'] ?? 0);
         try {
-            $this->invites->create($userId, $label, $maxUses, $expiresAt);
+            $this->invites->create($userId, $label, $maxUses, $expiresAt, $defaultPermissions);
             $_SESSION['flash_success'] = 'Invite link created successfully.';
         } catch (Throwable $e) {
             $_SESSION['flash_success'] = 'Error creating link: ' . $e->getMessage();
