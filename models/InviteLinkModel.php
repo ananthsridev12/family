@@ -10,19 +10,20 @@ final class InviteLinkModel
         $this->db = $db;
     }
 
-    public function create(int $createdBy, string $label, int $maxUses, ?string $expiresAt): int
+    public function create(int $createdBy, string $label, int $maxUses, ?string $expiresAt, array $defaultPermissions = []): int
     {
         $token = bin2hex(random_bytes(24));
         $stmt = $this->db->prepare(
-            'INSERT INTO invite_links (token, created_by, label, max_uses, expires_at)
-             VALUES (:token, :created_by, :label, :max_uses, :expires_at)'
+            'INSERT INTO invite_links (token, created_by, label, max_uses, expires_at, default_permissions)
+             VALUES (:token, :created_by, :label, :max_uses, :expires_at, :default_permissions)'
         );
         $stmt->execute([
-            ':token'      => $token,
-            ':created_by' => $createdBy,
-            ':label'      => $label !== '' ? $label : null,
-            ':max_uses'   => $maxUses,
-            ':expires_at' => $expiresAt,
+            ':token'               => $token,
+            ':created_by'          => $createdBy,
+            ':label'               => $label !== '' ? $label : null,
+            ':max_uses'            => $maxUses,
+            ':expires_at'          => $expiresAt,
+            ':default_permissions' => $defaultPermissions !== [] ? json_encode($defaultPermissions) : null,
         ]);
         return (int)$this->db->lastInsertId();
     }

@@ -89,7 +89,7 @@ final class JoinController extends BaseController
         $email    = trim((string)($_POST['email'] ?? ''));
         $name     = trim((string)($_POST['full_name'] ?? ''));
 
-        $this->users->create([
+        $newUserId = $this->users->create([
             ':username'      => $username,
             ':name'          => $name,
             ':email'         => $email,
@@ -98,6 +98,17 @@ final class JoinController extends BaseController
             ':is_active'     => 1,
             ':person_id'     => $personId,
         ]);
+
+        // Apply default permissions set on the invite link
+        $defaultPermsRaw = (string)($link['default_permissions'] ?? '');
+        if ($defaultPermsRaw !== '' && $newUserId > 0) {
+            $defaultPerms = json_decode($defaultPermsRaw, true);
+            if (is_array($defaultPerms) && $defaultPerms !== []) {
+                try {
+                    $this->users->updatePermissions($newUserId, $defaultPerms);
+                } catch (Throwable $e) {}
+            }
+        }
 
         $this->invites->incrementUsed((int)$link['link_id']);
 

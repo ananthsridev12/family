@@ -962,6 +962,18 @@ final class MemberController extends BaseController
         if ((int)($person['is_locked'] ?? 0) === 1) {
             return false;
         }
+        $scope = user_edit_scope();
+        if ($scope === 'none') {
+            return false;
+        }
+        $userPersonId = (int)(app_user()['person_id'] ?? 0);
+        $targetId     = (int)($person['person_id'] ?? 0);
+        if ($userPersonId > 0 && $targetId > 0) {
+            try {
+                return $this->people->isEditableByScope($targetId, $userPersonId, $scope);
+            } catch (Throwable $e) {}
+        }
+        // fallback: creator can edit
         $currentUserId = (int)(app_user()['user_id'] ?? 0);
         return $currentUserId > 0 && (int)($person['created_by'] ?? 0) === $currentUserId;
     }

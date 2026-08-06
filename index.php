@@ -122,6 +122,36 @@ function require_any_role(array $roles): void
     }
 }
 
+function user_permissions(): array
+{
+    $raw = (string)(app_user()['permissions'] ?? '{}');
+    $parsed = json_decode($raw, true);
+    return is_array($parsed) ? $parsed : [];
+}
+
+function user_edit_scope(): string
+{
+    $role = app_user_role();
+    if ($role === 'admin' || $role === 'full_editor') {
+        return 'all';
+    }
+    $scope = (string)(user_permissions()['edit_scope'] ?? 'self');
+    return in_array($scope, ['none', 'self', 'children', 'grandchildren', 'all'], true) ? $scope : 'self';
+}
+
+function user_can_add_person(): bool
+{
+    $role = app_user_role();
+    if ($role === 'admin' || $role === 'full_editor') {
+        return true;
+    }
+    $perms = user_permissions();
+    if (!isset($perms['can_add_person'])) {
+        return true; // default: allow submission (goes to approval)
+    }
+    return (bool)$perms['can_add_person'];
+}
+
 $route = (string)($_GET['route'] ?? 'home');
 $method = (string)($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
@@ -366,6 +396,11 @@ switch ($route) {
     case 'admin/reject-proposal':
         require_role('admin');
         $adminController->rejectProposal();
+        break;
+
+    case 'admin/update-user-permissions':
+        require_role('admin');
+        $adminController->updateUserPermissions();
         break;
 
     case 'admin/add-proposals':
