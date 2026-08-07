@@ -14,21 +14,25 @@ final class AdminController extends BaseController
     private PersonAddProposalModel $addProposals;
     private ViewTokenModel $viewTokens;
     private ViewCorrectionModel $viewCorrections;
+    private FamilyEventModel $familyEvents;
+    private AnnouncementModel $announcementsModel;
 
     public function __construct(PDO $db)
     {
         parent::__construct($db);
-        $this->people          = new PersonModel($db);
-        $this->branchesModel   = new BranchModel($db);
-        $this->engine          = new RelationshipEngine($db);
-        $this->users           = new UserModel($db);
-        $this->attachments     = new AttachmentModel($db);
-        $this->notifications   = new NotificationModel($db);
-        $this->proposals       = new EditProposalModel($db);
-        $this->invites         = new InviteLinkModel($db);
-        $this->addProposals    = new PersonAddProposalModel($db);
-        $this->viewTokens      = new ViewTokenModel($db);
-        $this->viewCorrections = new ViewCorrectionModel($db);
+        $this->people              = new PersonModel($db);
+        $this->branchesModel       = new BranchModel($db);
+        $this->engine              = new RelationshipEngine($db);
+        $this->users               = new UserModel($db);
+        $this->attachments         = new AttachmentModel($db);
+        $this->notifications       = new NotificationModel($db);
+        $this->proposals           = new EditProposalModel($db);
+        $this->invites             = new InviteLinkModel($db);
+        $this->addProposals        = new PersonAddProposalModel($db);
+        $this->viewTokens          = new ViewTokenModel($db);
+        $this->viewCorrections     = new ViewCorrectionModel($db);
+        $this->familyEvents        = new FamilyEventModel($db);
+        $this->announcementsModel  = new AnnouncementModel($db);
     }
 
     public function dashboard(): void
@@ -41,12 +45,17 @@ final class AdminController extends BaseController
         try { $unread = $this->notifications->countUnread($userId); } catch (Throwable $e) {}
         try { $pendingProposals = $this->proposals->countPending(); } catch (Throwable $e) {}
         try { $pendingAddProposals = $this->addProposals->countPending(); } catch (Throwable $e) {}
+        $announcements = [];
+        try { $announcements = $this->announcementsModel->list(5); } catch (Throwable $e) {}
+        $upcomingEvents = $this->collectUpcomingEvents(30);
         $this->render('admin/dashboard', [
-            'title'                => 'Admin Dashboard',
-            'stats'                => $this->collectStats(),
-            'unread_count'         => $unread,
-            'pending_proposals'    => $pendingProposals,
-            'pending_add_proposals' => $pendingAddProposals,
+            'title'                  => 'Admin Dashboard',
+            'stats'                  => $this->collectStats(),
+            'unread_count'           => $unread,
+            'pending_proposals'      => $pendingProposals,
+            'pending_add_proposals'  => $pendingAddProposals,
+            'announcements'          => $announcements,
+            'upcoming_events'        => $upcomingEvents,
         ]);
     }
 
@@ -1322,6 +1331,282 @@ final class AdminController extends BaseController
             'requests' => $requests,
             'flash'    => $flash,
         ]);
+    }
+
+    // ── Timeline ────────────────────────────────────────────────────────
+    public function timeline(): void
+    {
+        $events = [];
+        try {
+            // Births
+            $stmt = $this->db->prepare(
+                "SELECT person_id, full_name, gender, date_of_birth, birth_year
+                 FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) AND (date_of_birth IS NOT NULL OR birth_year IS NOT NULL)
+                 ORDER BY birth_year ASC, date_of_birth ASC LIMIT 500"
+            );
+            $stmt->execute();
+            foreach ($stmt->fetchAll() as $r) {
+                $year = !empty($r['date_of_birth']) ? (int)date('Y', strtotime($r['date_of_birth'])) : (int)$r['birth_year'];
+                if ($year < 1) continue;
+                $events[] = ['year'=>$year,'type'=>'birthday','icon'=>'&#127874;','label'=>'Born','person_name'=>$r['full_name'],'person_id'=>(int)$r['person_id'],'detail'=>''];
+            }
+            // Deaths
+            $stmt2 = $this->db->prepare(
+                "SELECT person_id, full_name, date_of_death FROM persons
+                 WHERE (is_deleted=0 OR is_deleted IS NULL) AND date_of_death IS NOT NULL LIMIT 200"
+            );
+            $stmt2->execute();
+            foreach ($stmt2->fetchAll() as $r) {
+                $year = (int)date('Y', strtotime((string)$r['date_of_death']));
+                $events[] = ['year'=>$year,'type'=>'death','icon'=>'&#x1FAB7;','label'=>'Passed away','person_name'=>$r['full_name'],'person_id'=>(int)$r['person_id'],'detail'=>''];
+            }
+            // Weddings
+            $stmt3 = $this->db->prepare(
+                "SELECT m.marriage_date, p1.full_name AS n1, p1.person_id AS id1, p2.full_name AS n2
+                 FROM marriages m
+                 INNER JOIN persons p1 ON p1.person_id=m.person1_id
+                 INNER JOIN persons p2 ON p2.person_id=m.person2_id
+                 WHERE m.marriage_date IS NOT NULL AND m.status='married' LIMIT 200"
+            );
+            $stmt3->execute();
+            foreach ($stmt3->fetchAll() as $r) {
+                $year = (int)date('Y', strtotime((string)$r['marriage_date']));
+                $events[] = ['year'=>$year,'type'=>'wedding','icon'=>'&#128149;','label'=>'Married','person_name'=>$r['n1'].' & '.$r['n2'],'person_id'=>(int)$r['id1'],'detail'=>date('d M Y',strtotime((string)$r['marriage_date']))];
+            }
+            // Family events
+            foreach ($this->familyEvents->list(200) as $fe) {
+                if (empty($fe['event_date'])) continue;
+                $year = (int)date('Y', strtotime((string)$fe['event_date']));
+                $events[] = ['year'=>$year,'type'=>'family_event','icon'=>'&#127881;','label'=>ucfirst((string)$fe['event_type']),'person_name'=>(string)$fe['title'],'person_id'=>0,'detail'=>(string)($fe['description']??'')];
+            }
+        } catch (Throwable $e) {}
+
+        usort($events, fn($a,$b) => $b['year'] <=> $a['year']);
+        $grouped = [];
+        foreach ($events as $ev) { $grouped[$ev['year']][] = $ev; }
+        krsort($grouped);
+
+        $this->render('shared/timeline', ['title'=>'Family Timeline','grouped'=>$grouped]);
+    }
+
+    // ── Memorial ─────────────────────────────────────────────────────────
+    public function memorial(): void
+    {
+        $deceased = [];
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT * FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL)
+                 AND (is_alive=0 OR date_of_death IS NOT NULL) ORDER BY date_of_death DESC, birth_year ASC LIMIT 300"
+            );
+            $stmt->execute();
+            $deceased = $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {}
+        $this->render('shared/memorial', ['title'=>'In Memoriam','deceased'=>$deceased]);
+    }
+
+    // ── Family Events ────────────────────────────────────────────────────
+    public function familyEventsList(): void
+    {
+        $events = [];
+        try { $events = $this->familyEvents->list(); } catch (Throwable $e) {}
+        $flash = $_SESSION['flash_success'] ?? null; unset($_SESSION['flash_success']);
+        $this->render('admin/family_events', ['title'=>'Family Events','events'=>$events,'flash'=>$flash]);
+    }
+
+    public function createFamilyEvent(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token']??''))) { http_response_code(403); exit; }
+        $userId = (int)(app_user()['user_id']??0);
+        try {
+            $this->familyEvents->create(
+                $userId,
+                trim((string)($_POST['title']??'')),
+                (string)($_POST['event_type']??'other'),
+                trim((string)($_POST['event_date']??'')) ?: null,
+                trim((string)($_POST['description']??'')) ?: null,
+                trim((string)($_POST['drive_link']??'')) ?: null,
+                []
+            );
+            $_SESSION['flash_success'] = 'Event added.';
+        } catch (Throwable $e) { $_SESSION['flash_success'] = 'Error: '.$e->getMessage(); }
+        header('Location: /index.php?route=admin/family-events'); exit;
+    }
+
+    public function deleteFamilyEvent(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token']??''))) { http_response_code(403); exit; }
+        $id = (int)($_POST['event_id']??0);
+        if ($id > 0) { try { $this->familyEvents->delete($id); } catch (Throwable $e) {} }
+        header('Location: /index.php?route=admin/family-events'); exit;
+    }
+
+    // ── Announcements ─────────────────────────────────────────────────────
+    public function announcementsList(): void
+    {
+        $list = [];
+        try { $list = $this->announcementsModel->list(); } catch (Throwable $e) {}
+        $flash = $_SESSION['flash_success'] ?? null; unset($_SESSION['flash_success']);
+        $this->render('admin/announcements', ['title'=>'Announcements','announcements'=>$list,'flash'=>$flash]);
+    }
+
+    public function createAnnouncement(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token']??''))) { http_response_code(403); exit; }
+        $userId = (int)(app_user()['user_id']??0);
+        try {
+            $this->announcementsModel->create($userId, trim((string)($_POST['title']??'')), trim((string)($_POST['body']??'')), isset($_POST['is_pinned']));
+            $_SESSION['flash_success'] = 'Announcement posted.';
+        } catch (Throwable $e) {}
+        header('Location: /index.php?route=admin/announcements'); exit;
+    }
+
+    public function deleteAnnouncement(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token']??''))) { http_response_code(403); exit; }
+        $id = (int)($_POST['announcement_id']??0);
+        if ($id > 0) { try { $this->announcementsModel->delete($id); } catch (Throwable $e) {} }
+        header('Location: /index.php?route=admin/announcements'); exit;
+    }
+
+    public function toggleAnnouncementPin(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token']??''))) { http_response_code(403); exit; }
+        $id = (int)($_POST['announcement_id']??0);
+        if ($id > 0) { try { $this->announcementsModel->togglePin($id); } catch (Throwable $e) {} }
+        header('Location: /index.php?route=admin/announcements'); exit;
+    }
+
+    // ── Bulk Import ───────────────────────────────────────────────────────
+    public function bulkImport(): void
+    {
+        $this->render('admin/bulk_import', ['title'=>'Bulk Import','result'=>null,'flash'=>null]);
+    }
+
+    public function bulkImportProcess(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token']??''))) { http_response_code(403); exit; }
+        $file = $_FILES['csv_file'] ?? null;
+        if (!$file || (int)($file['error']??1) !== UPLOAD_ERR_OK) {
+            $this->render('admin/bulk_import', ['title'=>'Bulk Import','result'=>['imported'=>0,'skipped'=>0,'errors'=>['No valid file uploaded.']],'flash'=>null]);
+            return;
+        }
+        $handle = fopen((string)$file['tmp_name'], 'r');
+        if ($handle === false) {
+            $this->render('admin/bulk_import', ['title'=>'Bulk Import','result'=>['imported'=>0,'skipped'=>0,'errors'=>['Could not read file.']],'flash'=>null]);
+            return;
+        }
+        $headers = fgetcsv($handle);
+        if ($headers === false) { fclose($handle); $this->render('admin/bulk_import', ['title'=>'Bulk Import','result'=>['imported'=>0,'skipped'=>0,'errors'=>['Empty or invalid CSV.']],'flash'=>null]); return; }
+        $headers = array_map('trim', array_map('strtolower', $headers));
+        $imported = 0; $skipped = 0; $errors = [];
+        $userId = (int)(app_user()['user_id']??0);
+        while (($row = fgetcsv($handle)) !== false) {
+            $data = [];
+            foreach ($headers as $i => $h) { $data[$h] = trim((string)($row[$i]??'')); }
+            $name = $data['full_name'] ?? '';
+            if ($name === '') { $skipped++; continue; }
+            $birthYear = isset($data['birth_year']) && $data['birth_year'] !== '' ? (int)$data['birth_year'] : null;
+            $gender = $data['gender'] ?? null;
+            $dups = [];
+            try { $dups = $this->people->findPotentialDuplicates($name, $birthYear, $gender ?: null); } catch (Throwable $e) {}
+            if (!empty($dups)) { $skipped++; continue; }
+            try {
+                $this->people->create([
+                    'full_name'        => $name,
+                    'gender'           => $gender ?: null,
+                    'birth_year'       => $birthYear,
+                    'date_of_birth'    => ($data['date_of_birth']??'') ?: null,
+                    'native_location'  => ($data['native_location']??'') ?: null,
+                    'current_location' => ($data['current_location']??'') ?: null,
+                    'occupation'       => ($data['occupation']??'') ?: null,
+                    'mobile'           => ($data['mobile']??'') ?: null,
+                    'email'            => ($data['email']??'') ?: null,
+                    'blood_group'      => ($data['blood_group']??'') ?: null,
+                    'is_alive'         => 1,
+                    'created_by'       => $userId,
+                ]);
+                $imported++;
+            } catch (Throwable $e) { $errors[] = "Row '$name': ".$e->getMessage(); }
+        }
+        fclose($handle);
+        $this->render('admin/bulk_import', ['title'=>'Bulk Import','result'=>['imported'=>$imported,'skipped'=>$skipped,'errors'=>$errors],'flash'=>null]);
+    }
+
+    public function importTemplate(): void
+    {
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="family_import_template.csv"');
+        $out = fopen('php://output', 'w');
+        fputcsv($out, ['full_name','gender','birth_year','date_of_birth','native_location','current_location','occupation','mobile','email','blood_group']);
+        fputcsv($out, ['Example Name','Male','1980','1980-06-15','Chennai','Bangalore','Engineer','9876543210','example@email.com','O+']);
+        fclose($out);
+        exit;
+    }
+
+    // ── Export ────────────────────────────────────────────────────────────
+    public function exportPersons(): void
+    {
+        $persons = [];
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT p.*, f.full_name AS father_name, m.full_name AS mother_name, s.full_name AS spouse_name
+                 FROM persons p
+                 LEFT JOIN persons f ON f.person_id=p.father_id
+                 LEFT JOIN persons m ON m.person_id=p.mother_id
+                 LEFT JOIN persons s ON s.person_id=p.spouse_id
+                 WHERE (p.is_deleted=0 OR p.is_deleted IS NULL) ORDER BY p.person_id ASC"
+            );
+            $stmt->execute();
+            $persons = $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {}
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="family_export_'.date('Y-m-d').'.csv"');
+        $out = fopen('php://output', 'w');
+        fputcsv($out, ['person_id','full_name','gender','birth_year','date_of_birth','date_of_death','blood_group','occupation','mobile','email','current_location','native_location','address','is_alive','father_name','mother_name','spouse_name']);
+        foreach ($persons as $p) {
+            fputcsv($out, [
+                $p['person_id'], $p['full_name'], $p['gender']??'', $p['birth_year']??'', $p['date_of_birth']??'',
+                $p['date_of_death']??'', $p['blood_group']??'', $p['occupation']??'', $p['mobile']??'',
+                $p['email']??'', $p['current_location']??'', $p['native_location']??'', $p['address']??'',
+                $p['is_alive']??1, $p['father_name']??'', $p['mother_name']??'', $p['spouse_name']??'',
+            ]);
+        }
+        fclose($out);
+        exit;
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    private function collectUpcomingEvents(int $days): array
+    {
+        $upcoming = [];
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT person_id, full_name, date_of_birth FROM persons
+                 WHERE (is_deleted=0 OR is_deleted IS NULL) AND is_alive=1 AND date_of_birth IS NOT NULL
+                 AND DATE_FORMAT(date_of_birth,'%m-%d') BETWEEN DATE_FORMAT(CURDATE(),'%m-%d') AND DATE_FORMAT(DATE_ADD(CURDATE(),INTERVAL :d DAY),'%m-%d')
+                 LIMIT 20"
+            );
+            $stmt->bindValue(':d', $days, PDO::PARAM_INT);
+            $stmt->execute();
+            foreach ($stmt->fetchAll() as $r) {
+                $upcoming[] = ['type'=>'birthday','icon'=>'&#127874;','name'=>$r['full_name'],'person_id'=>(int)$r['person_id'],'date'=>date('d M',strtotime((string)$r['date_of_birth']))];
+            }
+        } catch (Throwable $e) {}
+        try {
+            $stmt2 = $this->db->prepare(
+                "SELECT m.marriage_date, p1.full_name AS n1, p1.person_id AS id1, p2.full_name AS n2
+                 FROM marriages m INNER JOIN persons p1 ON p1.person_id=m.person1_id INNER JOIN persons p2 ON p2.person_id=m.person2_id
+                 WHERE m.status='married' AND m.marriage_date IS NOT NULL
+                 AND DATE_FORMAT(m.marriage_date,'%m-%d') BETWEEN DATE_FORMAT(CURDATE(),'%m-%d') AND DATE_FORMAT(DATE_ADD(CURDATE(),INTERVAL :d DAY),'%m-%d')
+                 LIMIT 10"
+            );
+            $stmt2->bindValue(':d', $days, PDO::PARAM_INT);
+            $stmt2->execute();
+            foreach ($stmt2->fetchAll() as $r) {
+                $upcoming[] = ['type'=>'anniversary','icon'=>'&#128149;','name'=>$r['n1'].' & '.$r['n2'],'person_id'=>(int)$r['id1'],'date'=>date('d M',strtotime((string)$r['marriage_date']))];
+            }
+        } catch (Throwable $e) {}
+        return $upcoming;
     }
 
     public function markCorrectionReviewed(): void

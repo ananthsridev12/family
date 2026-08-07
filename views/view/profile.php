@@ -240,7 +240,15 @@ function renderPersonCard(array $p, string $token, string $relation, string $uid
 </div>
 
 <div class="vp-footer">
-  This is a private family profile. Use the &#9998; Correction button on any person to report wrong details.
+  <?php
+    $currentUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/index.php?route=view&token=' . urlencode((string)($tokenRow['token'] ?? ''));
+    $waMsg = 'Here is my family profile: ' . $currentUrl;
+  ?>
+  <a href="https://wa.me/?text=<?= urlencode($waMsg) ?>" target="_blank" rel="noopener"
+     style="display:inline-flex;align-items:center;gap:.4rem;background:#25d366;color:#fff;border-radius:999px;padding:.4rem 1rem;font-size:.82rem;font-weight:600;text-decoration:none;margin-bottom:1rem;">
+    &#128172; Share on WhatsApp
+  </a>
+  <br>This is a private family profile. Use the &#9998; Correction button on any person to report wrong details.
 </div>
 
 <script>

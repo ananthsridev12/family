@@ -4,6 +4,10 @@
   <div class="d-flex gap-2">
     <a class="btn btn-sm btn-outline-primary" href="/index.php?route=admin/edit-person&id=<?= (int)$person['person_id'] ?>">Edit Profile</a>
     <button class="btn btn-sm btn-outline-indigo" onclick="document.getElementById('viewLinkSection').scrollIntoView({behavior:'smooth'})" style="border-color:#6366f1;color:#6366f1;">&#128279; View Link</button>
+    <?php
+      $waUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/index.php?route=admin/person-view&id=' . (int)$person['person_id'];
+    ?>
+    <a class="btn btn-sm btn-outline-success btn-pill" href="https://wa.me/?text=<?= urlencode('View family profile: ' . $waUrl) ?>" target="_blank" rel="noopener">&#128172; WhatsApp</a>
     <a class="btn btn-sm btn-outline-secondary" href="/index.php?route=admin/family-list">Back to List</a>
   </div>
 </div>

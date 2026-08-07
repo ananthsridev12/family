@@ -14,6 +14,8 @@ require_once __DIR__ . '/models/InviteLinkModel.php';
 require_once __DIR__ . '/models/PersonAddProposalModel.php';
 require_once __DIR__ . '/models/ViewTokenModel.php';
 require_once __DIR__ . '/models/ViewCorrectionModel.php';
+require_once __DIR__ . '/models/FamilyEventModel.php';
+require_once __DIR__ . '/models/AnnouncementModel.php';
 require_once __DIR__ . '/services/RelationshipEngine.php';
 require_once __DIR__ . '/services/ReminderService.php';
 require_once __DIR__ . '/controllers/BaseController.php';
@@ -459,6 +461,68 @@ switch ($route) {
         break;
     case 'view/request-correction':
         $viewController->requestCorrection();
+        break;
+
+    // Timeline & Memorial (shared, auth required)
+    case 'admin/timeline':
+    case 'member/timeline':
+        require_auth();
+        $adminController->timeline();
+        break;
+    case 'admin/memorial':
+    case 'member/memorial':
+        require_auth();
+        $adminController->memorial();
+        break;
+
+    // Family Events
+    case 'admin/family-events':
+        require_role('admin');
+        $adminController->familyEventsList();
+        break;
+    case 'admin/create-family-event':
+        require_role('admin');
+        $adminController->createFamilyEvent();
+        break;
+    case 'admin/delete-family-event':
+        require_role('admin');
+        $adminController->deleteFamilyEvent();
+        break;
+
+    // Announcements
+    case 'admin/announcements':
+        require_role('admin');
+        $adminController->announcementsList();
+        break;
+    case 'admin/create-announcement':
+        require_role('admin');
+        $adminController->createAnnouncement();
+        break;
+    case 'admin/delete-announcement':
+        require_role('admin');
+        $adminController->deleteAnnouncement();
+        break;
+    case 'admin/toggle-announcement-pin':
+        require_role('admin');
+        $adminController->toggleAnnouncementPin();
+        break;
+
+    // Bulk Import & Export
+    case 'admin/bulk-import':
+        require_role('admin');
+        $adminController->bulkImport();
+        break;
+    case 'admin/bulk-import-process':
+        require_role('admin');
+        $adminController->bulkImportProcess();
+        break;
+    case 'admin/import-template':
+        require_role('admin');
+        $adminController->importTemplate();
+        break;
+    case 'admin/export-persons':
+        require_role('admin');
+        $adminController->exportPersons();
         break;
 
     default:
