@@ -12,6 +12,8 @@ require_once __DIR__ . '/models/NotificationModel.php';
 require_once __DIR__ . '/models/EditProposalModel.php';
 require_once __DIR__ . '/models/InviteLinkModel.php';
 require_once __DIR__ . '/models/PersonAddProposalModel.php';
+require_once __DIR__ . '/models/ViewTokenModel.php';
+require_once __DIR__ . '/models/ViewCorrectionModel.php';
 require_once __DIR__ . '/services/RelationshipEngine.php';
 require_once __DIR__ . '/services/ReminderService.php';
 require_once __DIR__ . '/controllers/BaseController.php';
@@ -21,6 +23,7 @@ require_once __DIR__ . '/controllers/AdminController.php';
 require_once __DIR__ . '/controllers/MemberController.php';
 require_once __DIR__ . '/controllers/PersonController.php';
 require_once __DIR__ . '/controllers/JoinController.php';
+require_once __DIR__ . '/controllers/ViewController.php';
 
 function app_db(): PDO
 {
@@ -156,12 +159,13 @@ $route = (string)($_GET['route'] ?? 'home');
 $method = (string)($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
 $db = app_db();
-$authController = new AuthController($db);
+$authController   = new AuthController($db);
 $publicController = new PublicController($db);
-$adminController = new AdminController($db);
+$adminController  = new AdminController($db);
 $memberController = new MemberController($db);
 $personController = new PersonController($db);
-$joinController = new JoinController($db);
+$joinController   = new JoinController($db);
+$viewController   = new ViewController($db);
 
 switch ($route) {
     case 'home':
@@ -431,6 +435,30 @@ switch ($route) {
     case 'admin/deactivate-invite':
         require_role('admin');
         $adminController->deactivateInvite();
+        break;
+
+    case 'admin/generate-view-token':
+        require_role('admin');
+        $adminController->generateViewToken();
+        break;
+    case 'admin/delete-view-token':
+        require_role('admin');
+        $adminController->deleteViewToken();
+        break;
+    case 'admin/view-corrections':
+        require_role('admin');
+        $adminController->viewCorrectionsList();
+        break;
+    case 'admin/mark-correction-reviewed':
+        require_role('admin');
+        $adminController->markCorrectionReviewed();
+        break;
+
+    case 'view':
+        $viewController->show();
+        break;
+    case 'view/request-correction':
+        $viewController->requestCorrection();
         break;
 
     default:

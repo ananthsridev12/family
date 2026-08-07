@@ -12,19 +12,23 @@ final class AdminController extends BaseController
     private EditProposalModel $proposals;
     private InviteLinkModel $invites;
     private PersonAddProposalModel $addProposals;
+    private ViewTokenModel $viewTokens;
+    private ViewCorrectionModel $viewCorrections;
 
     public function __construct(PDO $db)
     {
         parent::__construct($db);
-        $this->people        = new PersonModel($db);
-        $this->branchesModel = new BranchModel($db);
-        $this->engine        = new RelationshipEngine($db);
-        $this->users         = new UserModel($db);
-        $this->attachments   = new AttachmentModel($db);
-        $this->notifications = new NotificationModel($db);
-        $this->proposals     = new EditProposalModel($db);
-        $this->invites       = new InviteLinkModel($db);
-        $this->addProposals  = new PersonAddProposalModel($db);
+        $this->people          = new PersonModel($db);
+        $this->branchesModel   = new BranchModel($db);
+        $this->engine          = new RelationshipEngine($db);
+        $this->users           = new UserModel($db);
+        $this->attachments     = new AttachmentModel($db);
+        $this->notifications   = new NotificationModel($db);
+        $this->proposals       = new EditProposalModel($db);
+        $this->invites         = new InviteLinkModel($db);
+        $this->addProposals    = new PersonAddProposalModel($db);
+        $this->viewTokens      = new ViewTokenModel($db);
+        $this->viewCorrections = new ViewCorrectionModel($db);
     }
 
     public function dashboard(): void
@@ -189,10 +193,16 @@ final class AdminController extends BaseController
         }
         $attachments = [];
         try { $attachments = $this->attachments->findByPersonId($id); } catch (Throwable $e) {}
+        $viewTokens = [];
+        try { $viewTokens = $this->viewTokens->listByPerson($id); } catch (Throwable $e) {}
+        $flash = $_SESSION['flash_success'] ?? null;
+        unset($_SESSION['flash_success']);
         $this->render('admin/person_view', [
             'title'       => 'Person Profile',
             'person'      => $person,
             'attachments' => $attachments,
+            'viewTokens'  => $viewTokens,
+            'flash'       => $flash,
         ]);
     }
 
@@ -1258,6 +1268,81 @@ final class AdminController extends BaseController
             try { $this->invites->deactivate($linkId); } catch (Throwable $e) {}
         }
         header('Location: /index.php?route=admin/invite-links');
+        exit;
+    }
+
+    public function generateViewToken(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(403);
+            echo 'Forbidden';
+            exit;
+        }
+        $personId  = (int)($_POST['person_id'] ?? 0);
+        $label     = trim((string)($_POST['label'] ?? ''));
+        $expiresRaw = trim((string)($_POST['expires_at'] ?? ''));
+        $expiresAt  = ($expiresRaw !== '') ? $expiresRaw . ' 23:59:59' : null;
+        $userId    = (int)(app_user()['user_id'] ?? 0);
+        if ($personId > 0) {
+            try {
+                $this->viewTokens->generate($personId, $userId, $label, $expiresAt);
+                $_SESSION['flash_success'] = 'View link generated successfully.';
+            } catch (Throwable $e) {
+                $_SESSION['flash_success'] = 'Error generating link.';
+            }
+        }
+        header('Location: /index.php?route=admin/person-view&id=' . $personId);
+        exit;
+    }
+
+    public function deleteViewToken(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(403);
+            echo 'Forbidden';
+            exit;
+        }
+        $tokenId  = (int)($_POST['token_id'] ?? 0);
+        $personId = (int)($_POST['person_id'] ?? 0);
+        if ($tokenId > 0) {
+            try { $this->viewTokens->delete($tokenId); } catch (Throwable $e) {}
+        }
+        header('Location: /index.php?route=admin/person-view&id=' . $personId);
+        exit;
+    }
+
+    public function viewCorrectionsList(): void
+    {
+        $requests = [];
+        try { $requests = $this->viewCorrections->findPending(); } catch (Throwable $e) {}
+        $flash = $_SESSION['flash_success'] ?? null;
+        unset($_SESSION['flash_success']);
+        $this->render('admin/view_corrections', [
+            'title'    => 'View Corrections',
+            'requests' => $requests,
+            'flash'    => $flash,
+        ]);
+    }
+
+    public function markCorrectionReviewed(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(403);
+            echo 'Forbidden';
+            exit;
+        }
+        $requestId  = (int)($_POST['request_id'] ?? 0);
+        $personId   = (int)($_POST['redirect_person'] ?? 0);
+        $reviewerId = (int)(app_user()['user_id'] ?? 0);
+        if ($requestId > 0) {
+            try { $this->viewCorrections->markReviewed($requestId, $reviewerId); } catch (Throwable $e) {}
+        }
+        if ($personId > 0) {
+            header('Location: /index.php?route=admin/person-view&id=' . $personId);
+        } else {
+            $_SESSION['flash_success'] = 'Marked as reviewed.';
+            header('Location: /index.php?route=admin/view-corrections');
+        }
         exit;
     }
 }

@@ -34,6 +34,7 @@ function _nav_active(string $route, string $current): string {
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/add-proposals', $currentRoute) ?>" href="/index.php?route=admin/add-proposals"><span>&#10010;</span> New Submissions</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/proposals', $currentRoute) ?>" href="/index.php?route=admin/proposals"><span>&#128196;</span> Edit Proposals</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/invite-links', $currentRoute) ?>" href="/index.php?route=admin/invite-links"><span>&#128279;</span> Invite Links</a></li>
+      <li class="nav-item"><a class="nav-link<?= _nav_active('admin/view-corrections', $currentRoute) ?>" href="/index.php?route=admin/view-corrections"><span>&#9998;</span> View Corrections</a></li>
       <?php endif; ?>
       <div class="nav-divider"></div>
       <li class="nav-item"><a class="nav-link<?= _nav_active('notifications', $currentRoute) ?>" href="/index.php?route=notifications"><span>&#128276;</span> Notifications</a></li>

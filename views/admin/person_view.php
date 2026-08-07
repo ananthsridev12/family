@@ -3,6 +3,7 @@
   <h1 class="h4 mb-0">Person Profile</h1>
   <div class="d-flex gap-2">
     <a class="btn btn-sm btn-outline-primary" href="/index.php?route=admin/edit-person&id=<?= (int)$person['person_id'] ?>">Edit Profile</a>
+    <button class="btn btn-sm btn-outline-indigo" onclick="document.getElementById('viewLinkSection').scrollIntoView({behavior:'smooth'})" style="border-color:#6366f1;color:#6366f1;">&#128279; View Link</button>
     <a class="btn btn-sm btn-outline-secondary" href="/index.php?route=admin/family-list">Back to List</a>
   </div>
 </div>
@@ -90,6 +91,91 @@
   </div>
 </div>
 
+<!-- View Link Section -->
+<div class="card card-body shadow-sm mt-4" id="viewLinkSection">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">&#128279; Secure View Links</h5>
+    <button class="btn btn-sm btn-primary btn-pill" data-bs-toggle="modal" data-bs-target="#genLinkModal">+ Generate Link</button>
+  </div>
+  <p class="text-muted mb-3" style="font-size:.85rem;">
+    Share a secure, personal link with this family member so they can view their profile and request corrections — no account needed.
+  </p>
+  <?php if (!empty($viewTokens)): ?>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead><tr><th>Label</th><th>Link</th><th>Expires</th><th>Created</th><th></th></tr></thead>
+      <tbody>
+        <?php foreach ($viewTokens as $vt):
+          $vtUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
+                 . '/index.php?route=view&token=' . urlencode((string)$vt['token']);
+          $vtExpired = $vt['expires_at'] !== null && strtotime((string)$vt['expires_at']) < time();
+        ?>
+        <tr>
+          <td><?= htmlspecialchars((string)($vt['label'] ?? 'Personal view'), ENT_QUOTES, 'UTF-8') ?></td>
+          <td style="max-width:260px;">
+            <div class="d-flex align-items-center gap-2">
+              <input type="text" class="form-control form-control-sm" readonly value="<?= htmlspecialchars($vtUrl, ENT_QUOTES, 'UTF-8') ?>" onclick="this.select()">
+              <button class="btn btn-sm btn-outline-secondary btn-pill" onclick="copyVtLink(this,'<?= htmlspecialchars($vtUrl, ENT_QUOTES, 'UTF-8') ?>')" title="Copy">&#128203;</button>
+            </div>
+          </td>
+          <td style="font-size:.8rem;">
+            <?php if ($vt['expires_at']): ?>
+              <span class="<?= $vtExpired ? 'text-danger' : 'text-muted' ?>">
+                <?= date('d M Y', strtotime((string)$vt['expires_at'])) ?>
+              </span>
+            <?php else: ?>
+              <span class="text-muted">Never</span>
+            <?php endif; ?>
+          </td>
+          <td style="font-size:.8rem; color:var(--ft-muted);"><?= date('d M Y', strtotime((string)$vt['created_at'])) ?></td>
+          <td>
+            <form method="post" action="/index.php?route=admin/delete-view-token" onsubmit="return confirm('Revoke this link?')">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
+              <input type="hidden" name="token_id" value="<?= (int)$vt['token_id'] ?>">
+              <input type="hidden" name="person_id" value="<?= (int)$person['person_id'] ?>">
+              <button class="btn btn-sm btn-outline-danger btn-pill">Revoke</button>
+            </form>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+  <?php else: ?>
+  <p class="text-muted mb-0" style="font-size:.85rem;">No view links yet. Generate one to share with this person.</p>
+  <?php endif; ?>
+</div>
+
+<!-- Generate Link Modal -->
+<div class="modal fade" id="genLinkModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+    <div class="modal-content" style="border-radius:16px;border:none;">
+      <form method="post" action="/index.php?route=admin/generate-view-token">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="person_id" value="<?= (int)$person['person_id'] ?>">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold">Generate View Link</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Label <span class="text-muted fw-normal">(optional)</span></label>
+            <input class="form-control" name="label" placeholder="e.g. Shared via WhatsApp">
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Expires on <span class="text-muted fw-normal">(optional)</span></label>
+            <input class="form-control" name="expires_at" type="date">
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary btn-pill" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-pill">Generate Link</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   var form = document.getElementById('upload_form');
@@ -128,5 +214,14 @@
       });
   });
 })();
+
+function copyVtLink(btn, url) {
+  navigator.clipboard.writeText(url).then(function() {
+    var orig = btn.innerHTML;
+    btn.innerHTML = '&#10003;';
+    btn.classList.replace('btn-outline-secondary','btn-success');
+    setTimeout(function() { btn.innerHTML = orig; btn.classList.replace('btn-success','btn-outline-secondary'); }, 2000);
+  });
+}
 </script>
 <?php include __DIR__ . '/../layouts/app_end.php'; ?>
