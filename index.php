@@ -243,6 +243,12 @@ switch ($route) {
         require_auth();
         $personController->deleteAttachment();
         break;
+    case 'person/node-info':
+    case 'admin/person-node-info':
+    case 'member/person-node-info':
+        require_auth();
+        $personController->nodeInfo();
+        break;
     case 'person/children':
         require_auth();
         $personController->children();

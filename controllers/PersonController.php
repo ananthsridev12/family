@@ -93,6 +93,29 @@ final class PersonController extends BaseController
         $this->json($out);
     }
 
+    public function nodeInfo(): void
+    {
+        $personId = (int)($_GET['person_id'] ?? 0);
+        if ($personId <= 0) {
+            $this->json(null);
+            return;
+        }
+        $person = null;
+        try { $person = $this->people->findWithRelations($personId); } catch (Throwable $e) {}
+        if ($person === null) {
+            $this->json(null);
+            return;
+        }
+        $this->json([
+            'id'          => (int)$person['person_id'],
+            'name'        => (string)$person['full_name'],
+            'spouse_name' => trim((string)($person['spouse_name'] ?? '')),
+            'spouse_id'   => (int)($person['spouse_id'] ?? 0),
+            'gender'      => (string)($person['gender'] ?? ''),
+            'birth_year'  => (string)($person['birth_year'] ?? ''),
+        ]);
+    }
+
     public function children(): void
     {
         $personId = (int)($_GET['person_id'] ?? 0);
@@ -104,17 +127,13 @@ final class PersonController extends BaseController
         $rows = $this->people->childrenOf($personId);
         $out = [];
         foreach ($rows as $row) {
-            $fatherName = trim((string)($row['father_name'] ?? ''));
-            $spouseName = trim((string)($row['spouse_name'] ?? ''));
-            $label = (string)$row['full_name'];
-            if ($spouseName !== '') {
-                $label .= ' — Spouse: ' . $spouseName;
-            } elseif ($fatherName !== '') {
-                $label .= ' — Father: ' . $fatherName;
-            }
             $out[] = [
-                'id' => (int)$row['person_id'],
-                'name' => $label,
+                'id'          => (int)$row['person_id'],
+                'name'        => (string)$row['full_name'],
+                'spouse_name' => trim((string)($row['spouse_name'] ?? '')),
+                'spouse_id'   => (int)($row['spouse_id'] ?? 0),
+                'gender'      => (string)($row['gender'] ?? ''),
+                'birth_year'  => (string)($row['birth_year'] ?? ''),
             ];
         }
         $this->json($out);
