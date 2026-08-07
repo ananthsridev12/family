@@ -133,18 +133,9 @@
             <label class="form-label">Full Date of Birth <span class="text-muted small">(optional)</span></label>
             <input class="form-control" name="date_of_birth" type="date">
           </div>
-          <div class="col-sm-4 d-flex align-items-end pb-1">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="is_alive" id="chkAlive" checked value="1">
-              <label class="form-check-label fw-600" for="chkAlive">Currently alive</label>
-            </div>
-          </div>
         </div>
 
-        <div class="mb-3" id="dodWrap" style="display:none;">
-          <label class="form-label">Date of Death</label>
-          <input class="form-control" name="date_of_death" type="date" style="max-width:200px;">
-        </div>
+        <input type="hidden" name="is_alive" value="1">
 
         <div class="mb-1">
           <label class="form-label">Note for admin <span class="text-muted small">(optional — helps with review)</span></label>
@@ -268,10 +259,6 @@
           <div class="review-row">
             <div class="review-lbl">Birth Year</div>
             <div class="review-val" id="rv-year">—</div>
-          </div>
-          <div class="review-row">
-            <div class="review-lbl">Status</div>
-            <div class="review-val" id="rv-alive">—</div>
           </div>
           <div class="review-row">
             <div class="review-lbl">Father</div>
@@ -539,13 +526,11 @@ function buildReview() {
   var nm = document.getElementById('inpFullName').value.trim();
   var gv = document.getElementById('hidGender').value;
   var yr = document.getElementById('inpBirthYear').value;
-  var al = document.getElementById('chkAlive').checked;
   var note = document.querySelector('[name="admin_note"]').value.trim();
 
   document.getElementById('rv-name').textContent   = nm || '—';
   document.getElementById('rv-gender').textContent = gv ? gv.charAt(0).toUpperCase() + gv.slice(1) : '—';
   document.getElementById('rv-year').textContent   = yr || 'Not specified';
-  document.getElementById('rv-alive').textContent  = al ? 'Alive' : 'Deceased';
 
   var fatherText = '—';
   if (fLinkedId) fatherText = fLinkedName + ' (linked)';

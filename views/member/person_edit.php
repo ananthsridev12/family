@@ -35,12 +35,7 @@
         <option value="other" <?= $g === 'other' ? 'selected' : '' ?>>Other</option>
       </select>
     </div>
-    <div class="col-md-3 d-flex align-items-end">
-      <div class="form-check">
-        <input class="form-check-input" type="checkbox" name="is_alive" id="is_alive" <?= (int)($person['is_alive'] ?? 1) === 1 ? 'checked' : '' ?>>
-        <label class="form-check-label" for="is_alive">Is Alive</label>
-      </div>
-    </div>
+    <input type="hidden" name="is_alive" value="<?= (int)($person['is_alive'] ?? 1) ?>">
 
     <div class="col-md-3">
       <label class="form-label">Date of Birth</label>
@@ -54,10 +49,7 @@
       <label class="form-label">Birth Order</label>
       <input type="number" name="birth_order" class="form-control" min="1" value="<?= htmlspecialchars((string)($person['birth_order'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
     </div>
-    <div class="col-md-3">
-      <label class="form-label">Date of Death</label>
-      <input type="date" name="date_of_death" class="form-control" value="<?= htmlspecialchars((string)($person['date_of_death'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
-    </div>
+    <input type="hidden" name="date_of_death" value="<?= htmlspecialchars((string)($person['date_of_death'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
     <div class="col-md-3">
       <label class="form-label">Marriage Date (optional)</label>
       <input type="date" name="spouse_marriage_date" class="form-control" value="">

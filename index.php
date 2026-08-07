@@ -528,6 +528,14 @@ switch ($route) {
         require_role('admin');
         $adminController->saveSiblingOrder();
         break;
+    case 'admin/mark-deceased':
+        require_role('admin');
+        $adminController->markDeceased();
+        break;
+    case 'admin/mark-alive':
+        require_role('admin');
+        $adminController->markAlive();
+        break;
 
     default:
         http_response_code(404);

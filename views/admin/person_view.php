@@ -12,6 +12,58 @@
   </div>
 </div>
 
+<?php $isDeceased = (int)($person['is_alive'] ?? 1) === 0 || !empty($person['date_of_death']); ?>
+<?php if ($isDeceased): ?>
+<div class="alert d-flex align-items-center gap-3 mb-3" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:12px;">
+  <span style="font-size:1.4rem;">&#129354;</span>
+  <div class="flex-grow-1">
+    <strong>Deceased</strong>
+    <?php if (!empty($person['date_of_death'])): ?>
+      &mdash; <?= date('d M Y', strtotime((string)$person['date_of_death'])) ?>
+    <?php endif; ?>
+  </div>
+  <form method="post" action="/index.php?route=admin/mark-alive" onsubmit="return confirm('Mark as alive?')">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
+    <input type="hidden" name="person_id" value="<?= (int)$person['person_id'] ?>">
+    <button class="btn btn-sm btn-outline-success btn-pill">&#8617; Mark as Alive</button>
+  </form>
+</div>
+<?php else: ?>
+<div class="d-flex justify-content-end mb-2">
+  <button class="btn btn-sm btn-outline-secondary btn-pill" data-bs-toggle="modal" data-bs-target="#deceasedModal">
+    &#129354; Mark as Deceased
+  </button>
+</div>
+<?php endif; ?>
+
+<!-- Mark as Deceased Modal -->
+<div class="modal fade" id="deceasedModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:380px;">
+    <div class="modal-content" style="border-radius:16px;border:none;">
+      <form method="post" action="/index.php?route=admin/mark-deceased">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="person_id" value="<?= (int)$person['person_id'] ?>">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold">Mark as Deceased</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted" style="font-size:.85rem;">
+            This will mark <strong><?= htmlspecialchars((string)$person['full_name'], ENT_QUOTES, 'UTF-8') ?></strong> as deceased.
+            You can optionally record their date of death.
+          </p>
+          <label class="form-label">Date of Death <span class="text-muted fw-normal">(optional)</span></label>
+          <input class="form-control" type="date" name="date_of_death" max="<?= date('Y-m-d') ?>">
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary btn-pill" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger btn-pill">Confirm</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div class="card card-body shadow-sm">
   <div class="row g-3">
     <div class="col-md-6">

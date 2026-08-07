@@ -1634,6 +1634,45 @@ final class AdminController extends BaseController
         exit;
     }
 
+    public function markDeceased(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(403); exit;
+        }
+        $personId = (int)($_POST['person_id'] ?? 0);
+        $dateOfDeath = trim((string)($_POST['date_of_death'] ?? '')) ?: null;
+        if ($personId > 0) {
+            try {
+                $stmt = $this->db->prepare(
+                    'UPDATE persons SET is_alive = 0, date_of_death = :dod WHERE person_id = :id'
+                );
+                $stmt->execute([':dod' => $dateOfDeath, ':id' => $personId]);
+                $_SESSION['flash_success'] = 'Marked as deceased.';
+            } catch (Throwable $e) {}
+        }
+        header('Location: /index.php?route=admin/person-view&id=' . $personId);
+        exit;
+    }
+
+    public function markAlive(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(403); exit;
+        }
+        $personId = (int)($_POST['person_id'] ?? 0);
+        if ($personId > 0) {
+            try {
+                $stmt = $this->db->prepare(
+                    'UPDATE persons SET is_alive = 1, date_of_death = NULL WHERE person_id = :id'
+                );
+                $stmt->execute([':id' => $personId]);
+                $_SESSION['flash_success'] = 'Marked as alive.';
+            } catch (Throwable $e) {}
+        }
+        header('Location: /index.php?route=admin/person-view&id=' . $personId);
+        exit;
+    }
+
     public function saveSiblingOrder(): void
     {
         header('Content-Type: application/json');
