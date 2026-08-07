@@ -524,6 +524,10 @@ switch ($route) {
         require_role('admin');
         $adminController->exportPersons();
         break;
+    case 'admin/save-sibling-order':
+        require_role('admin');
+        $adminController->saveSiblingOrder();
+        break;
 
     default:
         http_response_code(404);

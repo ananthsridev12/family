@@ -95,6 +95,48 @@
   </div>
 </div>
 
+<!-- Sibling / Children Order Section -->
+<?php if (!empty($children)): ?>
+<div class="card card-body shadow-sm mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">&#128106; Children & Sibling Order</h5>
+    <span class="text-muted" style="font-size:.82rem;">Drag to reorder, then click Save</span>
+  </div>
+  <p class="text-muted mb-3" style="font-size:.84rem;">
+    Arrange the children of <strong><?= htmlspecialchars((string)$person['full_name'], ENT_QUOTES, 'UTF-8') ?></strong> in birth order (eldest first).
+    This order is used across the tree to display siblings correctly.
+  </p>
+
+  <ul id="siblingList" class="list-group mb-3" style="max-width:520px;">
+    <?php foreach ($children as $child): ?>
+    <li class="list-group-item d-flex align-items-center gap-3 py-2"
+        data-id="<?= (int)$child['person_id'] ?>"
+        style="cursor:grab; border-radius:10px; margin-bottom:.35rem; border:1px solid var(--ft-border);">
+      <span class="drag-handle text-muted" style="font-size:1.1rem; cursor:grab;">&#9776;</span>
+      <span class="sib-pos-badge badge"
+            style="background:var(--ft-border);color:var(--ft-muted);min-width:24px;font-size:.75rem;font-weight:700;">
+        <?= (int)($child['birth_order'] ?? 0) > 0 ? (int)$child['birth_order'] : '—' ?>
+      </span>
+      <div class="flex-grow-1">
+        <div class="fw-600" style="font-size:.9rem;"><?= htmlspecialchars((string)$child['full_name'], ENT_QUOTES, 'UTF-8') ?></div>
+        <div class="text-muted" style="font-size:.75rem;">
+          <?= htmlspecialchars((string)($child['gender'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+          <?php if (!empty($child['birth_year'])): ?> · <?= (int)$child['birth_year'] ?><?php endif; ?>
+        </div>
+      </div>
+      <a href="/index.php?route=admin/person-view&id=<?= (int)$child['person_id'] ?>"
+         class="btn btn-outline-secondary btn-sm btn-pill" title="View profile">&#8599;</a>
+    </li>
+    <?php endforeach; ?>
+  </ul>
+
+  <div class="d-flex align-items-center gap-3">
+    <button id="saveSibOrder" class="btn btn-primary btn-sm btn-pill">Save Order</button>
+    <span id="sibOrderMsg" class="text-muted" style="font-size:.83rem;"></span>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- View Link Section -->
 <div class="card card-body shadow-sm mt-4" id="viewLinkSection">
   <div class="d-flex justify-content-between align-items-center mb-3">
@@ -227,5 +269,69 @@ function copyVtLink(btn, url) {
     setTimeout(function() { btn.innerHTML = orig; btn.classList.replace('btn-success','btn-outline-secondary'); }, 2000);
   });
 }
+
+// ── Sibling drag-and-drop reorder ────────────────────────────────────
+(function() {
+  var list = document.getElementById('siblingList');
+  if (!list) return;
+
+  var dragging = null;
+
+  list.querySelectorAll('li').forEach(function(item) {
+    item.setAttribute('draggable', 'true');
+    item.addEventListener('dragstart', function(e) {
+      dragging = item;
+      setTimeout(function() { item.style.opacity = '0.4'; }, 0);
+    });
+    item.addEventListener('dragend', function() {
+      item.style.opacity = '';
+      dragging = null;
+      updatePositionBadges();
+    });
+    item.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      if (dragging && dragging !== item) {
+        var rect = item.getBoundingClientRect();
+        var mid  = rect.top + rect.height / 2;
+        if (e.clientY < mid) {
+          list.insertBefore(dragging, item);
+        } else {
+          list.insertBefore(dragging, item.nextSibling);
+        }
+      }
+    });
+  });
+
+  function updatePositionBadges() {
+    list.querySelectorAll('li').forEach(function(li, idx) {
+      var badge = li.querySelector('.sib-pos-badge');
+      if (badge) badge.textContent = idx + 1;
+    });
+  }
+
+  document.getElementById('saveSibOrder') && document.getElementById('saveSibOrder').addEventListener('click', function() {
+    var ids = [];
+    list.querySelectorAll('li[data-id]').forEach(function(li) { ids.push(li.dataset.id); });
+    var msg = document.getElementById('sibOrderMsg');
+    msg.textContent = 'Saving…';
+    var fd = new FormData();
+    fd.append('csrf_token', '<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>');
+    fd.append('parent_id', '<?= (int)$person['person_id'] ?>');
+    fd.append('order_json', JSON.stringify(ids));
+    fetch('/index.php?route=admin/save-sibling-order', { method: 'POST', body: fd })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok) {
+          msg.textContent = '✓ Order saved.';
+          msg.style.color = '#059669';
+        } else {
+          msg.textContent = 'Error: ' + (d.error || 'unknown');
+          msg.style.color = '#dc2626';
+        }
+        setTimeout(function() { msg.textContent = ''; }, 3000);
+      })
+      .catch(function() { msg.textContent = 'Save failed.'; msg.style.color = '#dc2626'; });
+  });
+})();
 </script>
 <?php include __DIR__ . '/../layouts/app_end.php'; ?>

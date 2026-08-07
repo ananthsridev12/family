@@ -204,6 +204,8 @@ final class AdminController extends BaseController
         try { $attachments = $this->attachments->findByPersonId($id); } catch (Throwable $e) {}
         $viewTokens = [];
         try { $viewTokens = $this->viewTokens->listByPerson($id); } catch (Throwable $e) {}
+        $children = [];
+        try { $children = $this->people->childrenOf($id); } catch (Throwable $e) {}
         $flash = $_SESSION['flash_success'] ?? null;
         unset($_SESSION['flash_success']);
         $this->render('admin/person_view', [
@@ -211,6 +213,7 @@ final class AdminController extends BaseController
             'person'      => $person,
             'attachments' => $attachments,
             'viewTokens'  => $viewTokens,
+            'children'    => $children,
             'flash'       => $flash,
         ]);
     }
@@ -1627,6 +1630,40 @@ final class AdminController extends BaseController
         } else {
             $_SESSION['flash_success'] = 'Marked as reviewed.';
             header('Location: /index.php?route=admin/view-corrections');
+        }
+        exit;
+    }
+
+    public function saveSiblingOrder(): void
+    {
+        header('Content-Type: application/json');
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            echo json_encode(['ok' => false, 'error' => 'Invalid CSRF token']);
+            exit;
+        }
+        $parentId = (int)($_POST['parent_id'] ?? 0);
+        $orderRaw = (string)($_POST['order_json'] ?? '');
+        $ids = json_decode($orderRaw, true);
+        if ($parentId <= 0 || !is_array($ids) || empty($ids)) {
+            echo json_encode(['ok' => false, 'error' => 'Invalid data']);
+            exit;
+        }
+        try {
+            $stmt = $this->db->prepare(
+                'UPDATE persons SET birth_order = :order WHERE person_id = :id
+                 AND (father_id = :pid OR mother_id = :pid)
+                 AND (is_deleted = 0 OR is_deleted IS NULL)'
+            );
+            foreach ($ids as $position => $personId) {
+                $stmt->execute([
+                    ':order' => $position + 1,
+                    ':id'    => (int)$personId,
+                    ':pid'   => $parentId,
+                ]);
+            }
+            echo json_encode(['ok' => true]);
+        } catch (Throwable $e) {
+            echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
         }
         exit;
     }
