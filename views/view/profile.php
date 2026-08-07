@@ -8,50 +8,177 @@
 <style>
   :root {
     --vp-primary: #4f46e5;
-    --vp-bg: #f8fafc;
+    --vp-bg: #f1f5f9;
     --vp-card: #ffffff;
     --vp-border: #e2e8f0;
     --vp-muted: #64748b;
     --vp-text: #1e293b;
   }
-  body { background: var(--vp-bg); color: var(--vp-text); font-family: 'Inter', system-ui, sans-serif; }
+  body { background: var(--vp-bg); color: var(--vp-text); font-family: system-ui, sans-serif; }
+
+  /* Hero */
   .vp-hero {
     background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-    color: #fff;
-    padding: 2.5rem 1rem 3.5rem;
-    text-align: center;
+    color: #fff; padding: 2.5rem 1rem 4rem; text-align: center;
   }
   .vp-avatar {
-    width: 80px; height: 80px; border-radius: 50%;
-    background: rgba(255,255,255,.25); font-size: 2rem;
+    width: 72px; height: 72px; border-radius: 50%;
+    background: rgba(255,255,255,.2); font-size: 1.8rem;
     display: inline-flex; align-items: center; justify-content: center;
-    margin-bottom: 1rem; border: 3px solid rgba(255,255,255,.4);
+    margin-bottom: .75rem; border: 3px solid rgba(255,255,255,.35);
   }
-  .vp-hero h1 { font-size: 1.7rem; font-weight: 700; margin-bottom: .25rem; }
-  .vp-hero .sub { font-size: .9rem; opacity: .8; }
-  .vp-body { max-width: 700px; margin: -1.5rem auto 0; padding: 0 1rem 3rem; }
-  .vp-card { background: var(--vp-card); border-radius: 16px; border: 1px solid var(--vp-border); margin-bottom: 1.25rem; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-  .vp-card-header { padding: .75rem 1.25rem; background: #f1f5f9; border-bottom: 1px solid var(--vp-border); font-weight: 600; font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; color: var(--vp-muted); }
-  .vp-card-body { padding: 1.25rem; }
-  .info-row { display: flex; justify-content: space-between; padding: .5rem 0; border-bottom: 1px solid #f1f5f9; font-size: .9rem; }
-  .info-row:last-child { border-bottom: none; }
-  .info-label { color: var(--vp-muted); min-width: 130px; }
-  .info-value { font-weight: 500; text-align: right; }
-  .person-pill {
-    display: inline-flex; align-items: center; gap: .4rem;
-    background: #eef2ff; color: #4f46e5; border-radius: 999px;
-    padding: .2rem .7rem; font-size: .82rem; font-weight: 600;
+  .vp-hero h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: .2rem; }
+  .vp-hero .sub { font-size: .88rem; opacity: .8; }
+
+  /* Body */
+  .vp-body { max-width: 720px; margin: -2rem auto 0; padding: 0 1rem 3rem; }
+
+  /* Flash */
+  .vp-flash { border-radius: 12px; padding: .8rem 1.1rem; margin-bottom: 1rem; font-size: .88rem; }
+  .vp-flash.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+  .vp-flash.error   { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+  /* Section heading */
+  .vp-section-title {
+    font-size: .72rem; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--vp-muted);
+    margin: 1.75rem 0 .6rem;
   }
-  .person-pill.female { background: #fdf2f8; color: #9d174d; }
-  .sibling-list { display: flex; flex-wrap: wrap; gap: .5rem; }
-  .correction-form { background: #f8fafc; border-radius: 12px; padding: 1.25rem; border: 1px solid #e2e8f0; }
-  .vp-footer { text-align: center; color: var(--vp-muted); font-size: .78rem; padding: 2rem 1rem; }
-  .alert-vp { border-radius: 12px; padding: .85rem 1.2rem; margin-bottom: 1rem; font-size: .9rem; }
-  .alert-vp.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-  .alert-vp.error   { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+  /* Person card */
+  .person-card {
+    background: var(--vp-card); border: 1px solid var(--vp-border);
+    border-radius: 14px; overflow: hidden; margin-bottom: .75rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .person-card-top {
+    display: flex; align-items: center; gap: .85rem;
+    padding: .9rem 1.1rem;
+  }
+  .pc-avatar {
+    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; background: #eef2ff; color: #4f46e5;
+  }
+  .pc-avatar.female { background: #fdf2f8; color: #9d174d; }
+  .pc-name { font-weight: 700; font-size: .97rem; }
+  .pc-meta { font-size: .78rem; color: var(--vp-muted); margin-top: .05rem; }
+  .pc-actions { margin-left: auto; }
+  .btn-correct {
+    font-size: .75rem; border: 1px solid #c7d2fe; background: #eef2ff;
+    color: #4f46e5; border-radius: 999px; padding: .28rem .75rem;
+    cursor: pointer; transition: background .15s;
+  }
+  .btn-correct:hover { background: #e0e7ff; }
+  .btn-correct.open { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+
+  /* Details grid inside a person card */
+  .pc-details {
+    padding: 0 1.1rem .85rem; display: grid;
+    grid-template-columns: 1fr 1fr; gap: .3rem .75rem;
+    font-size: .83rem;
+  }
+  .pc-detail { display: flex; flex-direction: column; }
+  .pc-detail-label { font-size: .7rem; color: var(--vp-muted); text-transform: uppercase; letter-spacing: .05em; }
+  .pc-detail-value { font-weight: 500; }
+
+  /* Inline correction form */
+  .correction-inline {
+    display: none; border-top: 1px solid var(--vp-border);
+    background: #f8fafc; padding: 1rem 1.1rem;
+  }
+  .correction-inline.open { display: block; }
+  .correction-inline label { font-size: .8rem; font-weight: 600; margin-bottom: .2rem; display: block; }
+  .correction-inline input,
+  .correction-inline textarea { font-size: .83rem; }
+
+  /* Footer */
+  .vp-footer { text-align: center; color: var(--vp-muted); font-size: .75rem; padding: 1.5rem 1rem 2.5rem; }
+
+  @media (max-width: 480px) {
+    .pc-details { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
+
+<?php
+// Helper: render a full person card with expandable correction form
+function renderPersonCard(array $p, string $token, string $relation, string $uid): void {
+    $g = strtolower((string)($p['gender'] ?? ''));
+    $isFemale = $g === 'female';
+    $gIcon = $isFemale ? '&#128105;' : ($g === 'male' ? '&#128104;' : '&#128100;');
+
+    $metaParts = [];
+    if (!empty($p['birth_year'])) $metaParts[] = 'b. ' . (int)$p['birth_year'];
+    if (!empty($p['native_location'])) $metaParts[] = htmlspecialchars((string)$p['native_location'], ENT_QUOTES, 'UTF-8');
+    $meta = implode(' · ', $metaParts);
+
+    $formId = 'cf-' . $uid;
+
+    echo '<div class="person-card">';
+
+    // Top row
+    echo '<div class="person-card-top">';
+    echo '<div class="pc-avatar' . ($isFemale ? ' female' : '') . '">' . $gIcon . '</div>';
+    echo '<div>';
+    echo '<div class="pc-name">' . htmlspecialchars((string)$p['full_name'], ENT_QUOTES, 'UTF-8') . '</div>';
+    echo '<div class="pc-meta">' . htmlspecialchars($relation, ENT_QUOTES, 'UTF-8') . ($meta !== '' ? ' · ' . $meta : '') . '</div>';
+    echo '</div>';
+    echo '<div class="pc-actions">';
+    echo '<button class="btn-correct" onclick="toggleCorrection(\'' . $formId . '\', this)">&#9998; Correction</button>';
+    echo '</div>';
+    echo '</div>';
+
+    // Details grid
+    $details = [
+        'Gender'       => $p['gender'] ?? '',
+        'Date of Birth'=> !empty($p['date_of_birth']) ? date('d M Y', strtotime((string)$p['date_of_birth'])) : '',
+        'Birth Year'   => empty($p['date_of_birth']) && !empty($p['birth_year']) ? (string)(int)$p['birth_year'] : '',
+        'Blood Group'  => $p['blood_group'] ?? '',
+        'Occupation'   => $p['occupation'] ?? '',
+        'Current Location' => $p['current_location'] ?? '',
+        'Native'       => $p['native_location'] ?? '',
+        'Mobile'       => $p['mobile'] ?? '',
+        'Email'        => $p['email'] ?? '',
+        'Address'      => $p['address'] ?? '',
+    ];
+    $hasDetail = false;
+    foreach ($details as $v) { if ((string)$v !== '') { $hasDetail = true; break; } }
+
+    if ($hasDetail) {
+        echo '<div class="pc-details">';
+        foreach ($details as $lbl => $val) {
+            if ((string)$val === '') continue;
+            echo '<div class="pc-detail">';
+            echo '<span class="pc-detail-label">' . $lbl . '</span>';
+            echo '<span class="pc-detail-value">' . htmlspecialchars((string)$val, ENT_QUOTES, 'UTF-8') . '</span>';
+            echo '</div>';
+        }
+        echo '</div>';
+    }
+
+    // Inline correction form
+    echo '<div class="correction-inline" id="' . $formId . '">';
+    echo '<form method="post" action="/index.php?route=view/request-correction">';
+    echo '<input type="hidden" name="token" value="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8') . '">';
+    echo '<input type="hidden" name="person_id" value="' . (int)$p['person_id'] . '">';
+    echo '<div class="row g-2 mb-2">';
+    echo '<div class="col-6"><label>Your Name <span style="font-weight:400;color:#94a3b8;">(optional)</span></label>';
+    echo '<input class="form-control form-control-sm" name="requester_name" placeholder="e.g. Ramesh"></div>';
+    echo '<div class="col-6"><label>Your Phone/Email <span style="font-weight:400;color:#94a3b8;">(optional)</span></label>';
+    echo '<input class="form-control form-control-sm" name="requester_contact" placeholder="e.g. 98765 43210"></div>';
+    echo '</div>';
+    echo '<label>What needs to be corrected? <span style="color:#ef4444;">*</span></label>';
+    echo '<textarea class="form-control form-control-sm mb-2" name="correction_note" rows="3" required ';
+    echo 'placeholder="Describe what is wrong and what the correct information should be…"></textarea>';
+    echo '<button type="submit" class="btn btn-sm btn-primary" style="border-radius:999px;font-size:.8rem;padding:.3rem 1rem;">Submit</button>';
+    echo '</form>';
+    echo '</div>';
+
+    echo '</div>';
+}
+?>
 
 <div class="vp-hero">
   <div class="vp-avatar">
@@ -62,158 +189,74 @@
   </div>
   <h1><?= htmlspecialchars((string)$person['full_name'], ENT_QUOTES, 'UTF-8') ?></h1>
   <div class="sub">
-    <?php if (!empty($person['birth_year'])): ?>
-      Born <?= (int)$person['birth_year'] ?>
-    <?php endif; ?>
-    <?php if (!empty($person['native_location'])): ?>
-      &middot; <?= htmlspecialchars((string)$person['native_location'], ENT_QUOTES, 'UTF-8') ?>
-    <?php endif; ?>
+    <?php $heroParts = []; ?>
+    <?php if (!empty($person['birth_year'])): $heroParts[] = 'Born ' . (int)$person['birth_year']; endif; ?>
+    <?php if (!empty($person['current_location'])): $heroParts[] = htmlspecialchars((string)$person['current_location'], ENT_QUOTES, 'UTF-8'); endif; ?>
+    <?= implode(' &middot; ', $heroParts) ?>
   </div>
 </div>
 
 <div class="vp-body">
 
   <?php if (!empty($flash)): ?>
-  <div class="alert-vp <?= $flash['type'] === 'success' ? 'success' : 'error' ?>">
+  <div class="vp-flash <?= $flash['type'] === 'success' ? 'success' : 'error' ?>">
     <?= htmlspecialchars((string)$flash['msg'], ENT_QUOTES, 'UTF-8') ?>
   </div>
   <?php endif; ?>
 
-  <!-- Basic Info -->
-  <div class="vp-card">
-    <div class="vp-card-header">Personal Details</div>
-    <div class="vp-card-body">
-      <?php
-        $fields = [
-          'Gender'       => $person['gender'] ?? '',
-          'Date of Birth'=> !empty($person['date_of_birth']) ? date('d M Y', strtotime((string)$person['date_of_birth'])) : ($person['birth_year'] ?? ''),
-          'Blood Group'  => $person['blood_group'] ?? '',
-          'Occupation'   => $person['occupation'] ?? '',
-          'Location'     => $person['current_location'] ?? '',
-          'Native'       => $person['native_location'] ?? '',
-        ];
-        foreach ($fields as $label => $val):
-          if ((string)$val === '') continue;
-      ?>
-      <div class="info-row">
-        <span class="info-label"><?= $label ?></span>
-        <span class="info-value"><?= htmlspecialchars((string)$val, ENT_QUOTES, 'UTF-8') ?></span>
-      </div>
-      <?php endforeach; ?>
-    </div>
-  </div>
+  <!-- Main person card -->
+  <div class="vp-section-title">Your Profile</div>
+  <?php renderPersonCard($person, (string)$tokenRow['token'], 'You', 'self'); ?>
 
-  <!-- Family Circle -->
-  <?php if (!empty($person['father_name']) || !empty($person['mother_name']) || !empty($person['spouse_name']) || !empty($children) || !empty($siblings)): ?>
-  <div class="vp-card">
-    <div class="vp-card-header">Family</div>
-    <div class="vp-card-body">
-
-      <?php if (!empty($person['father_name'])): ?>
-      <div class="info-row">
-        <span class="info-label">Father</span>
-        <span class="info-value">
-          <span class="person-pill"><?= htmlspecialchars((string)$person['father_name'], ENT_QUOTES, 'UTF-8') ?></span>
-        </span>
-      </div>
-      <?php endif; ?>
-
-      <?php if (!empty($person['mother_name'])): ?>
-      <div class="info-row">
-        <span class="info-label">Mother</span>
-        <span class="info-value">
-          <span class="person-pill female"><?= htmlspecialchars((string)$person['mother_name'], ENT_QUOTES, 'UTF-8') ?></span>
-        </span>
-      </div>
-      <?php endif; ?>
-
-      <?php if (!empty($person['spouse_name'])): ?>
-      <div class="info-row">
-        <span class="info-label">Spouse</span>
-        <span class="info-value">
-          <?php $sg = ''; /* unknown spouse gender */ ?>
-          <span class="person-pill"><?= htmlspecialchars((string)$person['spouse_name'], ENT_QUOTES, 'UTF-8') ?></span>
-        </span>
-      </div>
-      <?php endif; ?>
-
-      <?php if (!empty($siblings)): ?>
-      <div class="info-row" style="flex-direction:column; align-items:flex-start; gap:.5rem;">
-        <span class="info-label">Siblings (<?= count($siblings) ?>)</span>
-        <div class="sibling-list">
-          <?php foreach ($siblings as $sib): ?>
-            <?php $sc = strtolower((string)($sib['gender'] ?? '')) === 'female' ? 'female' : ''; ?>
-            <span class="person-pill <?= $sc ?>">
-              <?= htmlspecialchars((string)$sib['full_name'], ENT_QUOTES, 'UTF-8') ?>
-              <?php if (!empty($sib['birth_year'])): ?>
-                <span style="opacity:.6;font-weight:400;"><?= (int)$sib['birth_year'] ?></span>
-              <?php endif; ?>
-            </span>
-          <?php endforeach; ?>
-        </div>
-      </div>
-      <?php endif; ?>
-
-      <?php if (!empty($children)): ?>
-      <div class="info-row" style="flex-direction:column; align-items:flex-start; gap:.5rem;">
-        <span class="info-label">Children (<?= count($children) ?>)</span>
-        <div class="sibling-list">
-          <?php foreach ($children as $child): ?>
-            <?php $cc = strtolower((string)($child['gender'] ?? '')) === 'female' ? 'female' : ''; ?>
-            <span class="person-pill <?= $cc ?>">
-              <?= htmlspecialchars((string)$child['full_name'], ENT_QUOTES, 'UTF-8') ?>
-              <?php if (!empty($child['birth_year'])): ?>
-                <span style="opacity:.6;font-weight:400;"><?= (int)$child['birth_year'] ?></span>
-              <?php endif; ?>
-            </span>
-          <?php endforeach; ?>
-        </div>
-      </div>
-      <?php endif; ?>
-
-    </div>
-  </div>
+  <!-- Parents -->
+  <?php if ($father !== null || $mother !== null): ?>
+  <div class="vp-section-title">Parents</div>
+  <?php if ($father !== null): renderPersonCard($father, (string)$tokenRow['token'], 'Father', 'father'); endif; ?>
+  <?php if ($mother !== null): renderPersonCard($mother, (string)$tokenRow['token'], 'Mother', 'mother'); endif; ?>
   <?php endif; ?>
 
-  <!-- Request Correction -->
-  <?php if (empty($flash) || $flash['type'] !== 'success'): ?>
-  <div class="vp-card">
-    <div class="vp-card-header">Request a Correction</div>
-    <div class="vp-card-body">
-      <p style="font-size:.85rem; color:var(--vp-muted); margin-bottom:1rem;">
-        See something wrong? Let us know and the admin will review and update the details.
-      </p>
-      <form method="post" action="/index.php?route=view/request-correction">
-        <input type="hidden" name="token" value="<?= htmlspecialchars((string)($tokenRow['token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
-        <input type="hidden" name="person_id" value="<?= (int)$person['person_id'] ?>">
-        <div class="correction-form">
-          <div class="mb-3">
-            <label class="form-label fw-semibold" style="font-size:.85rem;">Your Name <span class="text-muted fw-normal">(optional)</span></label>
-            <input class="form-control form-control-sm" name="requester_name" placeholder="e.g. Ramesh Kumar">
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold" style="font-size:.85rem;">Your Phone / Email <span class="text-muted fw-normal">(optional, so admin can follow up)</span></label>
-            <input class="form-control form-control-sm" name="requester_contact" placeholder="e.g. 98765 43210">
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold" style="font-size:.85rem;">What needs to be corrected? <span class="text-danger">*</span></label>
-            <textarea class="form-control form-control-sm" name="correction_note" rows="4" required
-              placeholder="e.g. My date of birth is wrong. It should be 12 June 1975, not 1974. Also my mother's name is Kavitha, not Kaveri."></textarea>
-          </div>
-          <button type="submit" class="btn btn-sm btn-primary" style="background:var(--vp-primary);border-color:var(--vp-primary);border-radius:999px;padding:.4rem 1.2rem;">
-            Submit Correction Request
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+  <!-- Spouse -->
+  <?php if ($spouse !== null): ?>
+  <div class="vp-section-title">Spouse</div>
+  <?php renderPersonCard($spouse, (string)$tokenRow['token'], 'Spouse', 'spouse'); ?>
+  <?php endif; ?>
+
+  <!-- Siblings -->
+  <?php if (!empty($siblings)): ?>
+  <div class="vp-section-title">Siblings (<?= count($siblings) ?>)</div>
+  <?php foreach ($siblings as $i => $sib): ?>
+    <?php renderPersonCard($sib, (string)$tokenRow['token'], 'Sibling', 'sib-' . $i); ?>
+  <?php endforeach; ?>
+  <?php endif; ?>
+
+  <!-- Children -->
+  <?php if (!empty($children)): ?>
+  <div class="vp-section-title">Children (<?= count($children) ?>)</div>
+  <?php foreach ($children as $i => $child): ?>
+    <?php renderPersonCard($child, (string)$tokenRow['token'], 'Child', 'child-' . $i); ?>
+  <?php endforeach; ?>
   <?php endif; ?>
 
 </div>
 
 <div class="vp-footer">
-  This is a private family profile shared securely. Do not share this link with others.
+  This is a private family profile. Use the &#9998; Correction button on any person to report wrong details.
 </div>
+
+<script>
+function toggleCorrection(id, btn) {
+  var el = document.getElementById(id);
+  var isOpen = el.classList.contains('open');
+  // Close all open forms first
+  document.querySelectorAll('.correction-inline.open').forEach(function(f) { f.classList.remove('open'); });
+  document.querySelectorAll('.btn-correct.open').forEach(function(b) { b.classList.remove('open'); });
+  if (!isOpen) {
+    el.classList.add('open');
+    btn.classList.add('open');
+    el.querySelector('textarea').focus();
+  }
+}
+</script>
 
 </body>
 </html>

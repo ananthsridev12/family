@@ -41,15 +41,49 @@ final class ViewController
             return;
         }
 
-        $children = [];
-        try { $children = $this->people->childrenOf($personId); } catch (Throwable $e) {}
+        // Fetch full details for each immediate family member
+        $father = null;
+        $mother = null;
+        $spouse = null;
+        try {
+            if ((int)($person['father_id'] ?? 0) > 0) {
+                $father = $this->people->findById((int)$person['father_id']);
+            }
+        } catch (Throwable $e) {}
+        try {
+            if ((int)($person['mother_id'] ?? 0) > 0) {
+                $mother = $this->people->findById((int)$person['mother_id']);
+            }
+        } catch (Throwable $e) {}
+        try {
+            if ((int)($person['spouse_id'] ?? 0) > 0) {
+                $spouse = $this->people->findById((int)$person['spouse_id']);
+            }
+        } catch (Throwable $e) {}
 
+        // Children with full details
+        $children = [];
+        try {
+            $basicChildren = $this->people->childrenOf($personId);
+            foreach ($basicChildren as $c) {
+                $full = null;
+                try { $full = $this->people->findById((int)$c['person_id']); } catch (Throwable $e) {}
+                $children[] = $full ?? $c;
+            }
+        } catch (Throwable $e) {}
+
+        // Siblings with full details
         $siblings = [];
         try {
             $fatherId = (int)($person['father_id'] ?? 0);
             $motherId = (int)($person['mother_id'] ?? 0);
             if ($fatherId > 0 || $motherId > 0) {
-                $siblings = $this->fetchSiblings($personId, $fatherId, $motherId);
+                $basicSiblings = $this->fetchSiblings($personId, $fatherId, $motherId);
+                foreach ($basicSiblings as $s) {
+                    $full = null;
+                    try { $full = $this->people->findById((int)$s['person_id']); } catch (Throwable $e) {}
+                    $siblings[] = $full ?? $s;
+                }
             }
         } catch (Throwable $e) {}
 
@@ -75,10 +109,11 @@ final class ViewController
             exit;
         }
 
+        // Only validate the token is valid — person_id can be any family member on the page
         $tokenRow = null;
         try { $tokenRow = $this->tokens->findByToken($token); } catch (Throwable $e) {}
 
-        if ($tokenRow === null || !$this->tokens->isValid($tokenRow) || (int)$tokenRow['person_id'] !== $personId) {
+        if ($tokenRow === null || !$this->tokens->isValid($tokenRow)) {
             $_SESSION['view_flash'] = ['type' => 'error', 'msg' => 'Invalid or expired link.'];
             header('Location: ' . $redirect);
             exit;
@@ -93,7 +128,7 @@ final class ViewController
             exit;
         }
 
-        $_SESSION['view_flash'] = ['type' => 'success', 'msg' => 'Your correction request has been submitted. The admin will review it and update the details.'];
+        $_SESSION['view_flash'] = ['type' => 'success', 'msg' => 'Correction request submitted. The admin will review and update the details.'];
         header('Location: ' . $redirect);
         exit;
     }
