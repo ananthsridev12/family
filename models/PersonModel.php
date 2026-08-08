@@ -434,6 +434,36 @@ final class PersonModel
         return $this->hasFatherColumn && $this->hasMotherColumn;
     }
 
+    public function siblingsOf(int $personId, int $fatherId, int $motherId): array
+    {
+        $conditions = [];
+        $params = [':pid' => $personId];
+        if ($fatherId > 0) {
+            $conditions[] = 'p.father_id = :fid';
+            $params[':fid'] = $fatherId;
+        }
+        if ($motherId > 0) {
+            $conditions[] = 'p.mother_id = :mid';
+            $params[':mid'] = $motherId;
+        }
+        if ($conditions === []) {
+            return [];
+        }
+        $where = implode(' OR ', $conditions);
+        $stmt = $this->db->prepare(
+            "SELECT p.person_id, p.full_name, p.birth_year, p.gender, p.is_alive,
+                    s.full_name AS spouse_name, s.person_id AS spouse_id
+             FROM persons p
+             LEFT JOIN persons s ON s.person_id = p.spouse_id
+             WHERE ($where) AND p.person_id != :pid
+               AND (p.is_deleted = 0 OR p.is_deleted IS NULL)
+             ORDER BY p.birth_year ASC, p.full_name ASC
+             LIMIT 50"
+        );
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
     private function hasParentChildTable(): bool
     {
         if ($this->hasParentChildTable !== null) {

@@ -37,14 +37,33 @@
           <a href="/index.php?route=admin/person-view&id=<?= (int)$item['person_id'] ?>">
             <?= htmlspecialchars((string)$item['full_name'], ENT_QUOTES, 'UTF-8') ?>
           </a>
+          <a href="/index.php?route=admin/wiki-view&id=<?= (int)$item['person_id'] ?>" class="ms-1" style="font-size:.72rem;color:#888;" title="Wiki View">&#128196;</a>
         </td>
         <td><?= htmlspecialchars((string)$item['gender'], ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= $item['age'] === null ? '-' : (int)$item['age'] ?></td>
         <td><?= htmlspecialchars((string)($item['birth_year'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= htmlspecialchars((string)($item['relationship_status'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
-        <td><?= htmlspecialchars((string)($item['father_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
-        <td><?= htmlspecialchars((string)($item['mother_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
-        <td><?= htmlspecialchars((string)($item['spouse_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+        <td>
+          <?php if (!empty($item['father_name']) && !empty($item['father_id'])): ?>
+            <a href="/index.php?route=admin/person-view&id=<?= (int)$item['father_id'] ?>"><?= htmlspecialchars((string)$item['father_name'], ENT_QUOTES, 'UTF-8') ?></a>
+          <?php else: ?>
+            <?= htmlspecialchars((string)($item['father_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+          <?php endif; ?>
+        </td>
+        <td>
+          <?php if (!empty($item['mother_name']) && !empty($item['mother_id'])): ?>
+            <a href="/index.php?route=admin/person-view&id=<?= (int)$item['mother_id'] ?>"><?= htmlspecialchars((string)$item['mother_name'], ENT_QUOTES, 'UTF-8') ?></a>
+          <?php else: ?>
+            <?= htmlspecialchars((string)($item['mother_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+          <?php endif; ?>
+        </td>
+        <td>
+          <?php if (!empty($item['spouse_name']) && !empty($item['spouse_id'])): ?>
+            <a href="/index.php?route=admin/person-view&id=<?= (int)$item['spouse_id'] ?>"><?= htmlspecialchars((string)$item['spouse_name'], ENT_QUOTES, 'UTF-8') ?></a>
+          <?php else: ?>
+            <?= htmlspecialchars((string)($item['spouse_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+          <?php endif; ?>
+        </td>
         <td><?= htmlspecialchars((string)($item['birth_order'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= (int)($item['created_by'] ?? 0) ?></td>
         <td><?= (int)($item['is_locked'] ?? 0) === 1 ? 'Yes' : 'No' ?></td>

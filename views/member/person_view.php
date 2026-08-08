@@ -3,6 +3,7 @@
   <h1 class="h4 mb-0">Person Profile</h1>
   <div class="d-flex gap-2">
     <a class="btn btn-sm btn-outline-primary" href="/index.php?route=member/edit-person&id=<?= (int)$person['person_id'] ?>">Edit Profile</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/index.php?route=member/wiki-view&id=<?= (int)$person['person_id'] ?>" title="Wikipedia-style family view">&#128196; Wiki View</a>
     <a class="btn btn-sm btn-outline-secondary" href="/index.php?route=member/family-list">Back to List</a>
   </div>
 </div>
