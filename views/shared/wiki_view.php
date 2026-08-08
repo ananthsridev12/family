@@ -35,7 +35,7 @@ $wUrl = fn(int $id): string => '/index.php?route=' . $wikiRoute . '&id=' . $id;
 
 // Recursive ancestor tree renderer
 // Renders a right-to-left pedigree list: deepest ancestors on left, subject on right
-function renderAncestorBranch(array $node, string $pRoute, string $wRoute, string $esc, callable $fmtDate, int $depth = 0): string
+function renderAncestorBranch(array $node, string $pRoute, string $wRoute, int $depth = 0): string
 {
     $id   = (int)($node['person_id'] ?? 0);
     $name = htmlspecialchars((string)($node['full_name'] ?? ''), ENT_QUOTES, 'UTF-8');
@@ -70,12 +70,12 @@ function renderAncestorBranch(array $node, string $pRoute, string $wRoute, strin
     $branches = '';
     if ($hasFather) {
         $branches .= '<div class="anc-branch anc-father">'
-            . renderAncestorBranch($node['father'], $pRoute, $wRoute, $esc, $fmtDate, $depth + 1)
+            . renderAncestorBranch($node['father'], $pRoute, $wRoute, $depth + 1)
             . '</div>';
     }
     if ($hasMother) {
         $branches .= '<div class="anc-branch anc-mother">'
-            . renderAncestorBranch($node['mother'], $pRoute, $wRoute, $esc, $fmtDate, $depth + 1)
+            . renderAncestorBranch($node['mother'], $pRoute, $wRoute, $depth + 1)
             . '</div>';
     }
 
@@ -428,7 +428,7 @@ function renderAncestorBranch(array $node, string $pRoute, string $wRoute, strin
       // We show person + their parents/ancestors
       $displayNode = $ancestorTree;
       $displayNode['full_name'] = $personName; // ensure subject name shown
-      echo renderAncestorBranch($displayNode, $profileRoute, $wikiRoute, $esc, $fmtDate);
+      echo renderAncestorBranch($displayNode, $profileRoute, $wikiRoute);
       ?>
     </div>
   </div>
