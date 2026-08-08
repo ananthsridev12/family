@@ -434,6 +434,34 @@ final class PersonModel
         return $this->hasFatherColumn && $this->hasMotherColumn;
     }
 
+    public function ancestorTree(int $personId, int $maxDepth = 6): ?array
+    {
+        if ($maxDepth <= 0) {
+            return null;
+        }
+        $person = $this->findWithRelations($personId);
+        if ($person === null) {
+            return null;
+        }
+        $node = [
+            'person_id'     => (int)$person['person_id'],
+            'full_name'     => (string)$person['full_name'],
+            'birth_year'    => (string)($person['birth_year'] ?? ''),
+            'date_of_birth' => (string)($person['date_of_birth'] ?? ''),
+            'is_alive'      => (int)($person['is_alive'] ?? 1),
+            'gender'        => (string)($person['gender'] ?? ''),
+            'father'        => null,
+            'mother'        => null,
+        ];
+        if ((int)($person['father_id'] ?? 0) > 0) {
+            $node['father'] = $this->ancestorTree((int)$person['father_id'], $maxDepth - 1);
+        }
+        if ((int)($person['mother_id'] ?? 0) > 0) {
+            $node['mother'] = $this->ancestorTree((int)$person['mother_id'], $maxDepth - 1);
+        }
+        return $node;
+    }
+
     public function siblingsOf(int $personId, int $fatherId, int $motherId): array
     {
         $conditions = [];

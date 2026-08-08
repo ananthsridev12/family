@@ -228,35 +228,7 @@ final class MemberController extends BaseController
             exit;
         }
 
-        $father = null;
-        $mother = null;
-        $patGrandfather = null;
-        $patGrandmother = null;
-        $matGrandfather = null;
-        $matGrandmother = null;
-
-        if ((int)($person['father_id'] ?? 0) > 0) {
-            $father = $this->people->findWithRelations((int)$person['father_id']);
-            if ($father) {
-                if ((int)($father['father_id'] ?? 0) > 0) {
-                    $patGrandfather = $this->people->findById((int)$father['father_id']);
-                }
-                if ((int)($father['mother_id'] ?? 0) > 0) {
-                    $patGrandmother = $this->people->findById((int)$father['mother_id']);
-                }
-            }
-        }
-        if ((int)($person['mother_id'] ?? 0) > 0) {
-            $mother = $this->people->findWithRelations((int)$person['mother_id']);
-            if ($mother) {
-                if ((int)($mother['father_id'] ?? 0) > 0) {
-                    $matGrandfather = $this->people->findById((int)$mother['father_id']);
-                }
-                if ((int)($mother['mother_id'] ?? 0) > 0) {
-                    $matGrandmother = $this->people->findById((int)$mother['mother_id']);
-                }
-            }
-        }
+        $ancestorTree = $this->people->ancestorTree($id, 6);
 
         $children = [];
         try { $children = $this->people->childrenOf($id); } catch (Throwable $e) {}
@@ -270,18 +242,14 @@ final class MemberController extends BaseController
         } catch (Throwable $e) {}
 
         $this->render('shared/wiki_view', [
-            'title'          => htmlspecialchars((string)$person['full_name'], ENT_QUOTES, 'UTF-8') . ' — Wiki Profile',
-            'person'         => $person,
-            'father'         => $father,
-            'mother'         => $mother,
-            'patGrandfather' => $patGrandfather,
-            'patGrandmother' => $patGrandmother,
-            'matGrandfather' => $matGrandfather,
-            'matGrandmother' => $matGrandmother,
-            'children'       => $children,
-            'siblings'       => $siblings,
-            'profileRoute'   => 'member/person-view',
-            'wikiRoute'      => 'member/wiki-view',
+            'title'        => htmlspecialchars((string)$person['full_name'], ENT_QUOTES, 'UTF-8') . ' — Wiki Profile',
+            'person'       => $person,
+            'ancestorTree' => $ancestorTree,
+            'children'     => $children,
+            'siblings'     => $siblings,
+            'profileRoute' => 'member/person-view',
+            'wikiRoute'    => 'member/wiki-view',
+            'childrenAjaxRoute' => 'member/person-children',
         ]);
     }
 

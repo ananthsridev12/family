@@ -58,41 +58,55 @@
   function createNode(person, level) {
     var wrap = document.createElement('div');
     wrap.className = 'tree-node border rounded p-2 mb-2';
-    wrap.style.marginLeft = (level * 14) + 'px';
+    wrap.style.marginLeft = (level * 16) + 'px';
 
     var header = document.createElement('div');
-    header.className = 'd-flex align-items-center gap-2 flex-wrap';
+    header.className = 'd-flex align-items-start gap-2 flex-wrap';
 
     var toggle = document.createElement('button');
     toggle.type = 'button';
-    toggle.className = 'btn btn-sm btn-outline-secondary';
-    toggle.style.minWidth = '28px';
+    toggle.className = 'btn btn-sm btn-outline-secondary flex-shrink-0';
+    toggle.style.cssText = 'min-width:28px;height:28px;padding:0;font-size:.8rem;line-height:1;';
     toggle.textContent = '+';
 
     var containerEl = wrap.closest('#treeContainer');
     var profileRoute = (containerEl && containerEl.getAttribute('data-profile-route')) || '';
+    var wikiRoute    = (containerEl && containerEl.getAttribute('data-wiki-route'))    || '';
 
-    // Person name link
+    // Main info block
+    var infoBlock = document.createElement('div');
+    infoBlock.style.cssText = 'flex:1;min-width:0;';
+
+    // Row 1: name + birth year
+    var nameRow = document.createElement('div');
+    nameRow.className = 'd-flex align-items-center gap-2 flex-wrap';
+
     var titleLink = document.createElement('a');
     titleLink.href = profileRoute ? profileRoute + '&id=' + encodeURIComponent(person.id) : '#';
     titleLink.textContent = person.name;
     titleLink.className = 'text-decoration-none fw-semibold';
-    titleLink.style.fontSize = '.9rem';
+    titleLink.style.fontSize = '.92rem';
 
-    // Meta: birth year
-    var meta = document.createElement('span');
-    meta.style.cssText = 'font-size:.75rem;color:#64748b;';
-    if (person.birth_year) meta.textContent = person.birth_year;
+    nameRow.appendChild(titleLink);
 
-    header.appendChild(toggle);
-    header.appendChild(titleLink);
-    if (person.birth_year) header.appendChild(meta);
+    if (person.birth_year) {
+      var yearBadge = document.createElement('span');
+      yearBadge.textContent = 'b.' + person.birth_year;
+      yearBadge.style.cssText = 'font-size:.7rem;color:#94a3b8;background:#f1f5f9;border-radius:999px;padding:1px 7px;';
+      nameRow.appendChild(yearBadge);
+    }
 
-    // Spouse display
+    infoBlock.appendChild(nameRow);
+
+    // Row 2: spouse (if any)
     if (person.spouse_name && person.spouse_name !== '') {
+      var spouseRow = document.createElement('div');
+      spouseRow.className = 'd-flex align-items-center gap-1';
+      spouseRow.style.marginTop = '2px';
+
       var heart = document.createElement('span');
       heart.textContent = '♥';
-      heart.style.cssText = 'color:#f43f5e;font-size:.85rem;';
+      heart.style.cssText = 'color:#f43f5e;font-size:.78rem;';
 
       var spouseLink = document.createElement('a');
       spouseLink.href = person.spouse_id && profileRoute
@@ -100,14 +114,31 @@
         : '#';
       spouseLink.textContent = person.spouse_name;
       spouseLink.className = 'text-decoration-none';
-      spouseLink.style.cssText = 'font-size:.88rem;color:#0891b2;font-weight:500;';
+      spouseLink.style.cssText = 'font-size:.8rem;color:#0891b2;font-weight:500;';
 
-      header.appendChild(heart);
-      header.appendChild(spouseLink);
+      spouseRow.appendChild(heart);
+      spouseRow.appendChild(spouseLink);
+      infoBlock.appendChild(spouseRow);
     }
 
+    // Row 3: action links (wiki)
+    if (wikiRoute && person.id) {
+      var actRow = document.createElement('div');
+      actRow.style.marginTop = '3px';
+      var wikiLink = document.createElement('a');
+      wikiLink.href = wikiRoute + '&id=' + encodeURIComponent(person.id);
+      wikiLink.textContent = '📖 Wiki';
+      wikiLink.style.cssText = 'font-size:.7rem;color:#6366f1;text-decoration:none;';
+      wikiLink.title = 'Wikipedia-style family view';
+      actRow.appendChild(wikiLink);
+      infoBlock.appendChild(actRow);
+    }
+
+    header.appendChild(toggle);
+    header.appendChild(infoBlock);
+
     var childrenWrap = document.createElement('div');
-    childrenWrap.className = 'mt-2';
+    childrenWrap.className = 'mt-1';
     childrenWrap.hidden = true;
 
     toggle.addEventListener('click', function () {
@@ -132,19 +163,19 @@
             childrenWrap.dataset.loaded = '1';
             childrenWrap.dataset.loading = '0';
             childrenWrap.hidden = kids.length === 0;
-            toggle.textContent = kids.length === 0 ? '·' : '-';
+            toggle.textContent = kids.length === 0 ? '·' : '−';
             if (kids.length === 0) toggle.disabled = true;
           })
           .catch(function () {
             childrenWrap.dataset.loaded = '1';
             childrenWrap.dataset.loading = '0';
             childrenWrap.hidden = false;
-            childrenWrap.innerHTML = '<div class="text-danger small">Failed to load.</div>';
+            childrenWrap.innerHTML = '<div class="text-danger small ps-2">Failed to load.</div>';
             toggle.textContent = '!';
           });
       } else {
         childrenWrap.hidden = !childrenWrap.hidden;
-        toggle.textContent = childrenWrap.hidden ? '+' : '-';
+        toggle.textContent = childrenWrap.hidden ? '+' : '−';
       }
     });
 
@@ -169,11 +200,10 @@
         if (match) { rootId = match[1]; rootInput.value = rootId; }
       }
       if (!rootId) {
-        container.innerHTML = '<div class="text-muted">Select a person from search or enter an ID.</div>';
+        container.innerHTML = '<div class="text-muted small">Select a person from search or enter an ID.</div>';
         return;
       }
       container.innerHTML = '<div class="text-muted small">Loading…</div>';
-      // Fetch root person info (including spouse) before rendering
       var infoRoute = '/index.php?route=person/node-info&person_id=' + encodeURIComponent(rootId);
       fetch(infoRoute, { headers: { 'Accept': 'application/json' } })
         .then(function (r) { return r.json(); })
