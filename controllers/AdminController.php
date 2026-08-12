@@ -90,11 +90,20 @@ final class AdminController extends BaseController
             }
         }
         unset($item);
+
+        $personIds = array_column($items, 'person_id');
+        $photoMap = [];
+        try { $photoMap = $this->attachments->findFirstPhotosByPersonIds($personIds); } catch (Throwable $e) {}
+        foreach ($items as &$item) {
+            $item['photo_id'] = (int)($photoMap[(int)$item['person_id']] ?? 0);
+        }
+        unset($item);
+
         $this->render('admin/family_list', [
-            'title' => 'Family List',
-            'items' => $items,
-            'error' => $_SESSION['flash_error'] ?? null,
-            'success' => $_SESSION['flash_success'] ?? null,
+            'title'    => 'Family List',
+            'items'    => $items,
+            'error'    => $_SESSION['flash_error'] ?? null,
+            'success'  => $_SESSION['flash_success'] ?? null,
         ]);
         unset($_SESSION['flash_error'], $_SESSION['flash_success']);
     }
@@ -244,15 +253,22 @@ final class AdminController extends BaseController
             );
         } catch (Throwable $e) {}
 
+        $profile_photo_id = 0;
+        try {
+            $photos = $this->attachments->findFirstPhotosByPersonIds([$id]);
+            $profile_photo_id = (int)($photos[$id] ?? 0);
+        } catch (Throwable $e) {}
+
         $this->render('shared/wiki_view', [
-            'title'        => htmlspecialchars((string)$person['full_name'], ENT_QUOTES, 'UTF-8') . ' — Wiki Profile',
-            'person'       => $person,
-            'ancestorTree' => $ancestorTree,
-            'children'     => $children,
-            'siblings'     => $siblings,
-            'profileRoute' => 'admin/person-view',
-            'wikiRoute'    => 'admin/wiki-view',
+            'title'             => htmlspecialchars((string)$person['full_name'], ENT_QUOTES, 'UTF-8') . ' — Wiki Profile',
+            'person'            => $person,
+            'ancestorTree'      => $ancestorTree,
+            'children'          => $children,
+            'siblings'          => $siblings,
+            'profileRoute'      => 'admin/person-view',
+            'wikiRoute'         => 'admin/wiki-view',
             'childrenAjaxRoute' => 'admin/person-children',
+            'profile_photo_id'  => $profile_photo_id,
         ]);
     }
 
@@ -459,6 +475,7 @@ final class AdminController extends BaseController
         $reverseRelation = null;
         $personAId = current_pov_id();
         $personBId = 0;
+        $path = [];
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $usePov = isset($_POST['use_pov_as_a']) ? 1 : 0;
             $postedA = (int)($_POST['person_a_id'] ?? 0);
@@ -470,18 +487,23 @@ final class AdminController extends BaseController
             }
         }
 
+        if ($personAId > 0 && $personBId > 0) {
+            try { $path = $this->people->findRelationPath($personAId, $personBId); } catch (Throwable $e) {}
+        }
+
         $personA = $personAId > 0 ? $this->people->findById($personAId) : null;
         $personB = $personBId > 0 ? $this->people->findById($personBId) : null;
 
         $this->render('admin/relationship_finder', [
-            'title' => 'Relationship Finder',
-            'relation' => $relation,
+            'title'          => 'Relationship Finder',
+            'relation'       => $relation,
             'reverse_relation' => $reverseRelation,
-            'person_a_id' => $personAId,
-            'person_b_id' => $personBId,
-            'person_a_name' => (string)($personA['full_name'] ?? ''),
-            'person_b_name' => (string)($personB['full_name'] ?? ''),
-            'lang' => (string)($_GET['lang'] ?? ($_SESSION['lang'] ?? 'en')),
+            'path'           => $path,
+            'person_a_id'    => $personAId,
+            'person_b_id'    => $personBId,
+            'person_a_name'  => (string)($personA['full_name'] ?? ''),
+            'person_b_name'  => (string)($personB['full_name'] ?? ''),
+            'lang'           => (string)($_GET['lang'] ?? ($_SESSION['lang'] ?? 'en')),
         ]);
     }
 
@@ -1084,7 +1106,7 @@ final class AdminController extends BaseController
     private function collectStats(): array
     {
         $users = (int)$this->db->query('SELECT COUNT(*) FROM users')->fetchColumn();
-        $persons = (int)$this->db->query('SELECT COUNT(*) FROM persons WHERE (is_deleted = 0 OR is_deleted IS NULL)')->fetchColumn();
+        $persons = (int)$this->db->query('SELECT COUNT(*) FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL)')->fetchColumn();
         $marriages = (int)$this->db->query('SELECT COUNT(*) FROM marriages')->fetchColumn();
         $familiesWithKids = (int)$this->db->query(
             'SELECT COUNT(DISTINCT m.marriage_id)
@@ -1095,12 +1117,187 @@ final class AdminController extends BaseController
              WHERE (c.is_deleted = 0 OR c.is_deleted IS NULL)'
         )->fetchColumn();
 
+        $living   = (int)$this->db->query('SELECT COUNT(*) FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) AND is_alive=1')->fetchColumn();
+        $deceased = (int)$this->db->query('SELECT COUNT(*) FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) AND is_alive=0')->fetchColumn();
+
+        // Gender distribution
+        $genderRows = $this->db->query('SELECT gender, COUNT(*) as cnt FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) GROUP BY gender')->fetchAll();
+        $genderMap = [];
+        foreach ($genderRows as $r) { $genderMap[(string)($r['gender'] ?? 'unknown')] = (int)$r['cnt']; }
+
+        // Average age of living members with DOB
+        $avgAge = null;
+        try {
+            $r = $this->db->query("SELECT AVG(TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE())) FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) AND is_alive=1 AND date_of_birth IS NOT NULL")->fetchColumn();
+            if ($r !== false && $r !== null) $avgAge = round((float)$r, 1);
+        } catch (Throwable $e) {}
+
+        // Oldest living member
+        $oldestLiving = null;
+        try {
+            $r = $this->db->query("SELECT person_id, full_name, date_of_birth, birth_year FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) AND is_alive=1 AND date_of_birth IS NOT NULL ORDER BY date_of_birth ASC LIMIT 1")->fetch();
+            if ($r) {
+                $age = (int)(new DateTimeImmutable($r['date_of_birth']))->diff(new DateTimeImmutable('today'))->y;
+                $oldestLiving = ['name' => $r['full_name'], 'id' => (int)$r['person_id'], 'age' => $age];
+            }
+        } catch (Throwable $e) {}
+
+        // Most common first names (top 5)
+        $topNames = [];
+        try {
+            $rows = $this->db->query("SELECT SUBSTRING_INDEX(full_name,' ',1) AS first_name, COUNT(*) AS cnt FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) GROUP BY first_name ORDER BY cnt DESC LIMIT 5")->fetchAll();
+            foreach ($rows as $r) { $topNames[] = ['name' => (string)$r['first_name'], 'count' => (int)$r['cnt']]; }
+        } catch (Throwable $e) {}
+
+        // Birth decade distribution
+        $decadeData = [];
+        try {
+            $rows = $this->db->query("SELECT FLOOR(birth_year/10)*10 AS decade, COUNT(*) AS cnt FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) AND birth_year IS NOT NULL AND birth_year > 1800 GROUP BY decade ORDER BY decade ASC")->fetchAll();
+            foreach ($rows as $r) { $decadeData[(int)$r['decade']] = (int)$r['cnt']; }
+        } catch (Throwable $e) {}
+
+        // Branches count
+        $branches = 0;
+        try { $branches = (int)$this->db->query('SELECT COUNT(*) FROM branches')->fetchColumn(); } catch (Throwable $e) {}
+
         return [
-            'users' => $users,
-            'persons' => $persons,
-            'marriages' => $marriages,
-            'families' => $familiesWithKids,
+            'users'         => $users,
+            'persons'       => $persons,
+            'marriages'     => $marriages,
+            'families'      => $familiesWithKids,
+            'living'        => $living,
+            'deceased'      => $deceased,
+            'gender_map'    => $genderMap,
+            'avg_age'       => $avgAge,
+            'oldest_living' => $oldestLiving,
+            'top_names'     => $topNames,
+            'decade_data'   => $decadeData,
+            'branches'      => $branches,
         ];
+    }
+
+    public function exportGedcom(): void
+    {
+        $persons   = [];
+        $marriages = [];
+        try {
+            $stmt = $this->db->prepare(
+                'SELECT p.*, f.full_name AS father_name, m.full_name AS mother_name, s.full_name AS spouse_name
+                 FROM persons p
+                 LEFT JOIN persons f ON f.person_id=p.father_id
+                 LEFT JOIN persons m ON m.person_id=p.mother_id
+                 LEFT JOIN persons s ON s.person_id=p.spouse_id
+                 WHERE (p.is_deleted=0 OR p.is_deleted IS NULL)
+                 ORDER BY p.person_id ASC'
+            );
+            $stmt->execute();
+            $persons = $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {}
+        try {
+            $stmt2 = $this->db->prepare(
+                'SELECT m.*, p1.full_name AS n1, p2.full_name AS n2
+                 FROM marriages m
+                 JOIN persons p1 ON p1.person_id=m.person1_id
+                 JOIN persons p2 ON p2.person_id=m.person2_id'
+            );
+            $stmt2->execute();
+            $marriages = $stmt2->fetchAll() ?: [];
+        } catch (Throwable $e) {}
+
+        header('Content-Type: text/plain; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="family_export_' . date('Y-m-d') . '.ged"');
+
+        $personIndex = [];
+        foreach ($persons as $p) { $personIndex[(int)$p['person_id']] = $p; }
+
+        $famKey     = [];
+        $fams       = [];
+        $famCounter = 0;
+
+        foreach ($marriages as $mar) {
+            $p1   = (int)$mar['person1_id'];
+            $p2   = (int)$mar['person2_id'];
+            $husb = isset($personIndex[$p1]) && ($personIndex[$p1]['gender'] ?? '') === 'male' ? $p1 : $p2;
+            $wife = $husb === $p1 ? $p2 : $p1;
+            $key  = $husb . ':' . $wife;
+            if (!isset($famKey[$key])) {
+                $famCounter++;
+                $famKey[$key]     = $famCounter;
+                $fams[$famCounter] = ['husb' => $husb, 'wife' => $wife, 'children' => [], 'marriage_date' => $mar['marriage_date'] ?? null];
+            }
+        }
+
+        foreach ($persons as $p) {
+            $fid = (int)($p['father_id'] ?? 0);
+            $mid = (int)($p['mother_id'] ?? 0);
+            if ($fid <= 0 && $mid <= 0) continue;
+            $key = $fid . ':' . $mid;
+            if (!isset($famKey[$key])) {
+                $famCounter++;
+                $famKey[$key]     = $famCounter;
+                $fams[$famCounter] = ['husb' => $fid, 'wife' => $mid, 'children' => [], 'marriage_date' => null];
+            }
+            $fams[$famKey[$key]]['children'][] = (int)$p['person_id'];
+        }
+
+        $lines   = [];
+        $lines[] = '0 HEAD';
+        $lines[] = '1 SOUR FamilyTreeApp';
+        $lines[] = '1 GEDC';
+        $lines[] = '2 VERS 5.5';
+        $lines[] = '1 CHAR UTF-8';
+        $lines[] = '1 DATE ' . strtoupper(date('d M Y'));
+
+        foreach ($persons as $p) {
+            $id      = (int)$p['person_id'];
+            $lines[] = '0 @I' . $id . '@ INDI';
+            $nameParts = explode(' ', (string)$p['full_name'], 2);
+            $given     = $nameParts[0] ?? '';
+            $surname   = $nameParts[1] ?? '';
+            $lines[]   = '1 NAME ' . $given . ' /' . $surname . '/';
+            $gender    = (string)($p['gender'] ?? 'unknown');
+            if ($gender === 'male')   $lines[] = '1 SEX M';
+            elseif ($gender === 'female') $lines[] = '1 SEX F';
+            if (!empty($p['date_of_birth'])) {
+                $lines[] = '1 BIRT';
+                $lines[] = '2 DATE ' . strtoupper(date('d M Y', strtotime((string)$p['date_of_birth'])));
+            } elseif (!empty($p['birth_year'])) {
+                $lines[] = '1 BIRT';
+                $lines[] = '2 DATE ' . (int)$p['birth_year'];
+            }
+            if (!empty($p['date_of_death'])) {
+                $lines[] = '1 DEAT';
+                $lines[] = '2 DATE ' . strtoupper(date('d M Y', strtotime((string)$p['date_of_death'])));
+            } elseif ((int)($p['is_alive'] ?? 1) === 0) {
+                $lines[] = '1 DEAT Y';
+            }
+            $fid = (int)($p['father_id'] ?? 0);
+            $mid = (int)($p['mother_id'] ?? 0);
+            if ($fid > 0 || $mid > 0) {
+                $key = $fid . ':' . $mid;
+                if (isset($famKey[$key])) $lines[] = '1 FAMC @F' . $famKey[$key] . '@';
+            }
+            foreach ($fams as $fNum => $fam) {
+                if ($fam['husb'] === $id || $fam['wife'] === $id) {
+                    $lines[] = '1 FAMS @F' . $fNum . '@';
+                }
+            }
+        }
+
+        foreach ($fams as $fNum => $fam) {
+            $lines[] = '0 @F' . $fNum . '@ FAM';
+            if ($fam['husb'] > 0) $lines[] = '1 HUSB @I' . $fam['husb'] . '@';
+            if ($fam['wife'] > 0) $lines[] = '1 WIFE @I' . $fam['wife'] . '@';
+            foreach ($fam['children'] as $cid) $lines[] = '1 CHIL @I' . $cid . '@';
+            if (!empty($fam['marriage_date'])) {
+                $lines[] = '1 MARR';
+                $lines[] = '2 DATE ' . strtoupper(date('d M Y', strtotime((string)$fam['marriage_date'])));
+            }
+        }
+
+        $lines[] = '0 TRLR';
+        echo implode("\r\n", $lines);
+        exit;
     }
 
     public function updateUserPermissions(): void

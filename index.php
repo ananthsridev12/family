@@ -253,6 +253,10 @@ switch ($route) {
         require_auth();
         $personController->children();
         break;
+    case 'person/node-info':
+        require_auth();
+        $personController->nodeInfo();
+        break;
     case 'admin/person-children':
         require_role('admin');
         $personController->children();
@@ -467,6 +471,18 @@ switch ($route) {
     case 'admin/deactivate-invite':
         require_role('admin');
         $adminController->deactivateInvite();
+        break;
+    case 'admin/export-gedcom':
+        require_role('admin');
+        $adminController->exportGedcom();
+        break;
+    case 'admin/wiki-view':
+        require_role('admin');
+        $adminController->wikiView();
+        break;
+    case 'member/wiki-view':
+        require_any_role(['limited_member', 'full_editor']);
+        $memberController->wikiView();
         break;
 
     case 'admin/generate-view-token':

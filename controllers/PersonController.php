@@ -106,15 +106,23 @@ final class PersonController extends BaseController
             $this->json(null);
             return;
         }
+        $photos = $this->attachments->findFirstPhotosByPersonIds([$personId]);
         $spouseName = trim((string)($person['spouse_name'] ?? ''));
         $this->json([
-            'id'          => (int)$person['person_id'],
-            'name'        => (string)$person['full_name'],
-            'full_name'   => (string)$person['full_name'],
-            'spouse_name' => $spouseName,
-            'spouse_id'   => (int)($person['spouse_id'] ?? 0),
-            'gender'      => (string)($person['gender'] ?? ''),
-            'birth_year'  => (int)($person['birth_year'] ?? 0),
+            'id'               => (int)$person['person_id'],
+            'name'             => (string)$person['full_name'],
+            'full_name'        => (string)$person['full_name'],
+            'gender'           => (string)($person['gender'] ?? ''),
+            'birth_year'       => (int)($person['birth_year'] ?? 0),
+            'date_of_birth'    => (string)($person['date_of_birth'] ?? ''),
+            'date_of_death'    => (string)($person['date_of_death'] ?? ''),
+            'is_alive'         => (int)($person['is_alive'] ?? 1),
+            'current_location' => (string)($person['current_location'] ?? ''),
+            'father_name'      => (string)($person['father_name'] ?? ''),
+            'mother_name'      => (string)($person['mother_name'] ?? ''),
+            'spouse_name'      => $spouseName,
+            'spouse_id'        => (int)($person['spouse_id'] ?? 0),
+            'photo_id'         => (int)($photos[$personId] ?? 0),
         ]);
     }
 
@@ -145,8 +153,20 @@ final class PersonController extends BaseController
                 'spouse_id'   => (int)($row['spouse_id'] ?? 0),
                 'gender'      => (string)($row['gender'] ?? ''),
                 'birth_year'  => (int)($row['birth_year'] ?? 0),
+                'photo_id'    => 0,
             ];
         }
+
+        if (!empty($rows)) {
+            $photos = $this->attachments->findFirstPhotosByPersonIds(
+                array_column($rows, 'person_id')
+            );
+            foreach ($out as &$item) {
+                $item['photo_id'] = (int)($photos[$item['id']] ?? 0);
+            }
+            unset($item);
+        }
+
         $this->json($out);
     }
 

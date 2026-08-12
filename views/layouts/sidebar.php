@@ -43,6 +43,7 @@ function _nav_active(string $route, string $current): string {
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/view-corrections', $currentRoute) ?>" href="/index.php?route=admin/view-corrections"><span>&#9998;</span> View Corrections</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/bulk-import', $currentRoute) ?>" href="/index.php?route=admin/bulk-import"><span>&#128229;</span> Bulk Import</a></li>
       <li class="nav-item"><a class="btn btn-sm btn-outline-secondary btn-pill mx-2 my-1" href="/index.php?route=admin/export-persons">&#8659; Export CSV</a></li>
+      <li class="nav-item"><a class="btn btn-sm btn-outline-secondary btn-pill mx-2 my-1" href="/index.php?route=admin/export-gedcom">&#8659; Export GEDCOM</a></li>
       <?php endif; ?>
       <div class="nav-divider"></div>
       <li class="nav-item"><a class="nav-link<?= _nav_active('notifications', $currentRoute) ?>" href="/index.php?route=notifications"><span>&#128276;</span> Notifications</a></li>

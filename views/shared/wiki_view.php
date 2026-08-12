@@ -356,6 +356,13 @@ function renderAncBox(array $p, string $pRoute, string $wRoute, bool $isSelf = f
       <?= $esc($personName) ?>
       <?php if ($genderIcon): ?><small><?= $genderIcon ?> <?= ucfirst($gender) ?></small><?php endif; ?>
     </div>
+    <?php if (!empty($profile_photo_id)): ?>
+    <div class="text-center py-2" style="border-bottom:1px solid #e2e8f0;">
+      <img src="/index.php?route=person/attachment&id=<?= (int)$profile_photo_id ?>"
+           style="width:90px;height:90px;object-fit:cover;border-radius:50%;border:3px solid #6366f1;"
+           alt="<?= $esc($personName) ?>">
+    </div>
+    <?php endif; ?>
     <table>
       <?php if ($born): ?>
       <tr><td>Born</td><td><?= $esc($born) ?><?= $ageStr ? ' <span style="color:#94a3b8;font-size:.76rem;">(' . $esc($ageStr) . ' yrs)</span>' : '' ?></td></tr>
@@ -674,4 +681,5 @@ function renderAncBox(array $p, string $pRoute, string $wRoute, bool $isSelf = f
 </div><!-- /wiki-main -->
 </div><!-- /wiki-wrap -->
 </div>
+
 <?php include __DIR__ . '/../layouts/app_end.php'; ?>

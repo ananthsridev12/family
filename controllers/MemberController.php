@@ -185,6 +185,15 @@ final class MemberController extends BaseController
             $item['marital_status'] = ((int)($item['spouse_id'] ?? 0) > 0) ? 'Married/Linked' : 'Single/Unknown';
         }
         unset($item);
+
+        $personIds = array_column($items, 'person_id');
+        $photoMap = [];
+        try { $photoMap = $this->attachments->findFirstPhotosByPersonIds($personIds); } catch (Throwable $e) {}
+        foreach ($items as &$item) {
+            $item['photo_id'] = (int)($photoMap[(int)$item['person_id']] ?? 0);
+        }
+        unset($item);
+
         $this->render('member/family_list', ['title' => 'Family List', 'items' => $items]);
     }
 
@@ -241,15 +250,22 @@ final class MemberController extends BaseController
             );
         } catch (Throwable $e) {}
 
+        $profile_photo_id = 0;
+        try {
+            $photos = $this->attachments->findFirstPhotosByPersonIds([$id]);
+            $profile_photo_id = (int)($photos[$id] ?? 0);
+        } catch (Throwable $e) {}
+
         $this->render('shared/wiki_view', [
-            'title'        => htmlspecialchars((string)$person['full_name'], ENT_QUOTES, 'UTF-8') . ' — Wiki Profile',
-            'person'       => $person,
-            'ancestorTree' => $ancestorTree,
-            'children'     => $children,
-            'siblings'     => $siblings,
-            'profileRoute' => 'member/person-view',
-            'wikiRoute'    => 'member/wiki-view',
+            'title'             => htmlspecialchars((string)$person['full_name'], ENT_QUOTES, 'UTF-8') . ' — Wiki Profile',
+            'person'            => $person,
+            'ancestorTree'      => $ancestorTree,
+            'children'          => $children,
+            'siblings'          => $siblings,
+            'profileRoute'      => 'member/person-view',
+            'wikiRoute'         => 'member/wiki-view',
             'childrenAjaxRoute' => 'member/person-children',
+            'profile_photo_id'  => $profile_photo_id,
         ]);
     }
 
@@ -349,6 +365,7 @@ final class MemberController extends BaseController
         $reverseRelation = null;
         $personAId = current_pov_id();
         $personBId = 0;
+        $path = [];
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $usePov = isset($_POST['use_pov_as_a']) ? 1 : 0;
             $postedA = (int)($_POST['person_a_id'] ?? 0);
@@ -360,18 +377,23 @@ final class MemberController extends BaseController
             }
         }
 
+        if ($personAId > 0 && $personBId > 0) {
+            try { $path = $this->people->findRelationPath($personAId, $personBId); } catch (Throwable $e) {}
+        }
+
         $personA = $personAId > 0 ? $this->people->findById($personAId) : null;
         $personB = $personBId > 0 ? $this->people->findById($personBId) : null;
 
         $this->render('member/relationship_finder', [
-            'title' => 'Relationship Finder',
-            'relation' => $relation,
+            'title'           => 'Relationship Finder',
+            'relation'        => $relation,
             'reverse_relation' => $reverseRelation,
-            'person_a_id' => $personAId,
-            'person_b_id' => $personBId,
-            'person_a_name' => (string)($personA['full_name'] ?? ''),
-            'person_b_name' => (string)($personB['full_name'] ?? ''),
-            'lang' => (string)($_GET['lang'] ?? ($_SESSION['lang'] ?? 'en')),
+            'path'            => $path,
+            'person_a_id'     => $personAId,
+            'person_b_id'     => $personBId,
+            'person_a_name'   => (string)($personA['full_name'] ?? ''),
+            'person_b_name'   => (string)($personB['full_name'] ?? ''),
+            'lang'            => (string)($_GET['lang'] ?? ($_SESSION['lang'] ?? 'en')),
         ]);
     }
 
@@ -1011,7 +1033,7 @@ final class MemberController extends BaseController
     private function collectStats(): array
     {
         $users = (int)$this->db->query('SELECT COUNT(*) FROM users')->fetchColumn();
-        $persons = (int)$this->db->query('SELECT COUNT(*) FROM persons WHERE (is_deleted = 0 OR is_deleted IS NULL)')->fetchColumn();
+        $persons = (int)$this->db->query('SELECT COUNT(*) FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL)')->fetchColumn();
         $marriages = (int)$this->db->query('SELECT COUNT(*) FROM marriages')->fetchColumn();
         $familiesWithKids = (int)$this->db->query(
             'SELECT COUNT(DISTINCT m.marriage_id)
@@ -1022,11 +1044,56 @@ final class MemberController extends BaseController
              WHERE (c.is_deleted = 0 OR c.is_deleted IS NULL)'
         )->fetchColumn();
 
+        $living   = (int)$this->db->query('SELECT COUNT(*) FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) AND is_alive=1')->fetchColumn();
+        $deceased = (int)$this->db->query('SELECT COUNT(*) FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) AND is_alive=0')->fetchColumn();
+
+        $genderRows = $this->db->query('SELECT gender, COUNT(*) as cnt FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) GROUP BY gender')->fetchAll();
+        $genderMap = [];
+        foreach ($genderRows as $r) { $genderMap[(string)($r['gender'] ?? 'unknown')] = (int)$r['cnt']; }
+
+        $avgAge = null;
+        try {
+            $r = $this->db->query("SELECT AVG(TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE())) FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) AND is_alive=1 AND date_of_birth IS NOT NULL")->fetchColumn();
+            if ($r !== false && $r !== null) $avgAge = round((float)$r, 1);
+        } catch (Throwable $e) {}
+
+        $oldestLiving = null;
+        try {
+            $r = $this->db->query("SELECT person_id, full_name, date_of_birth, birth_year FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) AND is_alive=1 AND date_of_birth IS NOT NULL ORDER BY date_of_birth ASC LIMIT 1")->fetch();
+            if ($r) {
+                $age = (int)(new DateTimeImmutable($r['date_of_birth']))->diff(new DateTimeImmutable('today'))->y;
+                $oldestLiving = ['name' => $r['full_name'], 'id' => (int)$r['person_id'], 'age' => $age];
+            }
+        } catch (Throwable $e) {}
+
+        $topNames = [];
+        try {
+            $rows = $this->db->query("SELECT SUBSTRING_INDEX(full_name,' ',1) AS first_name, COUNT(*) AS cnt FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) GROUP BY first_name ORDER BY cnt DESC LIMIT 5")->fetchAll();
+            foreach ($rows as $r) { $topNames[] = ['name' => (string)$r['first_name'], 'count' => (int)$r['cnt']]; }
+        } catch (Throwable $e) {}
+
+        $decadeData = [];
+        try {
+            $rows = $this->db->query("SELECT FLOOR(birth_year/10)*10 AS decade, COUNT(*) AS cnt FROM persons WHERE (is_deleted=0 OR is_deleted IS NULL) AND birth_year IS NOT NULL AND birth_year > 1800 GROUP BY decade ORDER BY decade ASC")->fetchAll();
+            foreach ($rows as $r) { $decadeData[(int)$r['decade']] = (int)$r['cnt']; }
+        } catch (Throwable $e) {}
+
+        $branches = 0;
+        try { $branches = (int)$this->db->query('SELECT COUNT(*) FROM branches')->fetchColumn(); } catch (Throwable $e) {}
+
         return [
-            'users' => $users,
-            'persons' => $persons,
-            'marriages' => $marriages,
-            'families' => $familiesWithKids,
+            'users'         => $users,
+            'persons'       => $persons,
+            'marriages'     => $marriages,
+            'families'      => $familiesWithKids,
+            'living'        => $living,
+            'deceased'      => $deceased,
+            'gender_map'    => $genderMap,
+            'avg_age'       => $avgAge,
+            'oldest_living' => $oldestLiving,
+            'top_names'     => $topNames,
+            'decade_data'   => $decadeData,
+            'branches'      => $branches,
         ];
     }
 

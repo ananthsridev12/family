@@ -179,6 +179,14 @@
       }
     });
 
+    if (person.photo_id && person.photo_id > 0) {
+      var avatar = document.createElement('img');
+      avatar.src = '/index.php?route=person/attachment&id=' + person.photo_id;
+      avatar.style.cssText = 'width:32px;height:32px;object-fit:cover;border-radius:50%;flex-shrink:0;margin-right:4px;';
+      avatar.alt = '';
+      header.insertBefore(avatar, toggle);
+    }
+
     wrap.appendChild(header);
     wrap.appendChild(childrenWrap);
     return wrap;

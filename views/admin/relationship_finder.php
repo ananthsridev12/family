@@ -48,6 +48,26 @@
     <p class="mb-0"><strong>Removed:</strong> <?= $relation['removed'] === null ? '-' : (int)$relation['removed'] ?></p>
   </div></div>
 <?php endif; ?>
+
+<?php if (!empty($path ?? [])): ?>
+<div class="card mt-3"><div class="card-body">
+  <h2 class="h6 mb-3">Relationship Path</h2>
+  <div class="d-flex flex-wrap align-items-center gap-1">
+    <?php foreach ($path as $i => $step): ?>
+      <?php if ($i > 0): ?>
+        <span class="text-muted mx-1">
+          <small><?= htmlspecialchars((string)$step['label'], ENT_QUOTES, 'UTF-8') ?> &rarr;</small>
+        </span>
+      <?php endif; ?>
+      <a href="/index.php?route=admin/person-view&id=<?= (int)$step['id'] ?>"
+         class="badge text-decoration-none"
+         style="background:var(--ft-primary,#4f46e5);color:#fff;font-size:.78rem;padding:4px 10px;border-radius:999px;">
+        <?= htmlspecialchars((string)$step['name'], ENT_QUOTES, 'UTF-8') ?>
+      </a>
+    <?php endforeach; ?>
+  </div>
+</div></div>
+<?php endif; ?>
 <script>
   (function () {
     var usePov = document.getElementById('use_pov_as_a');

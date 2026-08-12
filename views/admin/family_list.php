@@ -34,6 +34,11 @@
       <tr>
         <td><?= (int)$item['person_id'] ?></td>
         <td>
+          <?php if (!empty($item['photo_id'])): ?>
+          <img src="/index.php?route=person/attachment&id=<?= (int)$item['photo_id'] ?>"
+               style="width:32px;height:32px;object-fit:cover;border-radius:50%;margin-right:6px;vertical-align:middle;"
+               alt="">
+          <?php endif; ?>
           <a href="/index.php?route=admin/person-view&id=<?= (int)$item['person_id'] ?>">
             <?= htmlspecialchars((string)$item['full_name'], ENT_QUOTES, 'UTF-8') ?>
           </a>

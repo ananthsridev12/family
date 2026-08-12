@@ -45,6 +45,34 @@ final class AttachmentModel
         return $row ?: null;
     }
 
+    /**
+     * For each person id, return the attachment_id of their first (lowest id) photo.
+     * Returns [person_id => attachment_id].
+     */
+    public function findFirstPhotosByPersonIds(array $personIds): array
+    {
+        $personIds = array_values(array_unique(array_filter($personIds, static fn($id) => (int)$id > 0)));
+        if ($personIds === []) return [];
+        $ph = implode(',', array_fill(0, count($personIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT pa.person_id, MIN(pa.attachment_id) AS attachment_id
+             FROM person_attachments pa
+             WHERE pa.person_id IN ($ph)
+               AND pa.attachment_type = 'photo'
+               AND pa.mime_type IN ('image/jpeg','image/png','image/webp')
+             GROUP BY pa.person_id"
+        );
+        foreach ($personIds as $i => $id) {
+            $stmt->bindValue($i + 1, (int)$id, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        $result = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $result[(int)$row['person_id']] = (int)$row['attachment_id'];
+        }
+        return $result;
+    }
+
     public function delete(int $id): void
     {
         $stmt = $this->db->prepare('DELETE FROM person_attachments WHERE attachment_id = :id');

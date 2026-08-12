@@ -494,6 +494,54 @@ final class PersonModel
         return $stmt->fetchAll();
     }
 
+    /**
+     * BFS shortest path between two persons using parent/child/spouse edges.
+     * Returns an array of steps: [['id'=>int,'label'=>string,'name'=>string], ...]
+     * First step has label ''. Max 12 hops. Returns [] if no path found.
+     */
+    public function findRelationPath(int $fromId, int $toId): array
+    {
+        if ($fromId <= 0 || $toId <= 0 || $fromId === $toId) return [];
+        $stmt = $this->db->query(
+            'SELECT person_id, full_name, gender, father_id, mother_id, spouse_id
+             FROM persons
+             WHERE (is_deleted=0 OR is_deleted IS NULL)'
+        );
+        $all = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $all[(int)$row['person_id']] = $row;
+        }
+        $visited = [$fromId => true];
+        $queue = [[$fromId, [['id' => $fromId, 'label' => '', 'name' => (string)($all[$fromId]['full_name'] ?? '')]]]];
+        while (!empty($queue)) {
+            [$cur, $path] = array_shift($queue);
+            if ($cur === $toId) return $path;
+            if (count($path) > 12) continue;
+            $p = $all[$cur] ?? null;
+            if ($p === null) continue;
+            $neighbors = [];
+            $fid = (int)($p['father_id'] ?? 0);
+            $mid = (int)($p['mother_id'] ?? 0);
+            if ($fid > 0 && isset($all[$fid])) $neighbors[] = [$fid, 'Father'];
+            if ($mid > 0 && isset($all[$mid])) $neighbors[] = [$mid, 'Mother'];
+            $sid = (int)($p['spouse_id'] ?? 0);
+            if ($sid > 0 && isset($all[$sid])) $neighbors[] = [$sid, 'Spouse'];
+            foreach ($all as $pid => $pp) {
+                if ((int)($pp['father_id'] ?? 0) === $cur || (int)($pp['mother_id'] ?? 0) === $cur) {
+                    $neighbors[] = [$pid, 'Child'];
+                }
+            }
+            foreach ($neighbors as [$nid, $link]) {
+                if (isset($visited[$nid])) continue;
+                $visited[$nid] = true;
+                $newPath = $path;
+                $newPath[] = ['id' => $nid, 'label' => $link, 'name' => (string)($all[$nid]['full_name'] ?? '')];
+                $queue[] = [$nid, $newPath];
+            }
+        }
+        return [];
+    }
+
     private function hasParentChildTable(): bool
     {
         if ($this->hasParentChildTable !== null) {
