@@ -381,6 +381,45 @@ final class AdminController extends BaseController
         ]);
     }
 
+    public function svgTree(): void
+    {
+        $rootId = (int)($_GET['person_id'] ?? current_pov_id());
+        $root = $rootId > 0 ? $this->people->findById($rootId) : null;
+        $this->render('shared/svg_tree', [
+            'title'             => 'Visual Tree',
+            'root_id'           => $rootId,
+            'root_name'         => (string)($root['full_name'] ?? ''),
+            'profileRoute'      => 'admin/person-view',
+            'wikiRoute'         => 'admin/wiki-view',
+            'childrenAjaxRoute' => 'admin/person-children',
+        ]);
+    }
+
+    public function mapView(): void
+    {
+        $locations = [];
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT person_id, full_name, current_location, native_location
+                 FROM persons
+                 WHERE (is_deleted=0 OR is_deleted IS NULL)
+                   AND (
+                     (current_location IS NOT NULL AND current_location != '')
+                     OR (native_location IS NOT NULL AND native_location != '')
+                   )
+                 ORDER BY full_name ASC LIMIT 500"
+            );
+            $stmt->execute();
+            $locations = $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {}
+        $this->render('shared/map_view', [
+            'title'        => 'Family Map',
+            'locations'    => $locations,
+            'profileRoute' => 'admin/person-view',
+            'wikiRoute'    => 'admin/wiki-view',
+        ]);
+    }
+
     public function ancestors(): void
     {
         $personId = (int)($_GET['person_id'] ?? current_pov_id());

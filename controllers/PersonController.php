@@ -106,13 +106,15 @@ final class PersonController extends BaseController
             $this->json(null);
             return;
         }
+        $spouseName = trim((string)($person['spouse_name'] ?? ''));
         $this->json([
             'id'          => (int)$person['person_id'],
             'name'        => (string)$person['full_name'],
-            'spouse_name' => trim((string)($person['spouse_name'] ?? '')),
+            'full_name'   => (string)$person['full_name'],
+            'spouse_name' => $spouseName,
             'spouse_id'   => (int)($person['spouse_id'] ?? 0),
             'gender'      => (string)($person['gender'] ?? ''),
-            'birth_year'  => (string)($person['birth_year'] ?? ''),
+            'birth_year'  => (int)($person['birth_year'] ?? 0),
         ]);
     }
 
@@ -127,13 +129,22 @@ final class PersonController extends BaseController
         $rows = $this->people->childrenOf($personId);
         $out = [];
         foreach ($rows as $row) {
+            $fatherName = trim((string)($row['father_name'] ?? ''));
+            $spouseName = trim((string)($row['spouse_name'] ?? ''));
+            $label = (string)$row['full_name'];
+            if ($spouseName !== '') {
+                $label .= ' — Spouse: ' . $spouseName;
+            } elseif ($fatherName !== '') {
+                $label .= ' — Father: ' . $fatherName;
+            }
             $out[] = [
                 'id'          => (int)$row['person_id'],
-                'name'        => (string)$row['full_name'],
-                'spouse_name' => trim((string)($row['spouse_name'] ?? '')),
+                'name'        => $label,
+                'full_name'   => (string)$row['full_name'],
+                'spouse_name' => $spouseName,
                 'spouse_id'   => (int)($row['spouse_id'] ?? 0),
                 'gender'      => (string)($row['gender'] ?? ''),
-                'birth_year'  => (string)($row['birth_year'] ?? ''),
+                'birth_year'  => (int)($row['birth_year'] ?? 0),
             ];
         }
         $this->json($out);

@@ -290,6 +290,14 @@ switch ($route) {
         require_role('admin');
         $adminController->wikiView();
         break;
+    case 'admin/svg-tree':
+        require_role('admin');
+        $adminController->svgTree();
+        break;
+    case 'admin/map-view':
+        require_role('admin');
+        $adminController->mapView();
+        break;
     case 'admin/ancestors':
         require_role('admin');
         $adminController->ancestors();
@@ -362,6 +370,14 @@ switch ($route) {
     case 'member/wiki-view':
         require_any_role(['limited_member', 'full_editor']);
         $memberController->wikiView();
+        break;
+    case 'member/svg-tree':
+        require_any_role(['limited_member', 'full_editor']);
+        $memberController->svgTree();
+        break;
+    case 'member/map-view':
+        require_any_role(['limited_member', 'full_editor']);
+        $memberController->mapView();
         break;
     case 'member/ancestors':
         require_any_role(['limited_member', 'full_editor']);

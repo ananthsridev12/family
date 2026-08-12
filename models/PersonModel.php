@@ -63,7 +63,8 @@ final class PersonModel
     {
         if ($this->supportsParentColumns()) {
             $stmt = $this->db->prepare(
-                'SELECT DISTINCT p.person_id, p.full_name, p.date_of_birth, p.birth_year, p.birth_order,
+                'SELECT DISTINCT p.person_id, p.full_name, p.gender, p.date_of_birth, p.birth_year, p.birth_order,
+                        p.spouse_id,
                         f.full_name AS father_name,
                         s.full_name AS spouse_name
                  FROM persons p
@@ -83,7 +84,8 @@ final class PersonModel
 
         if ($this->hasParentChildTable()) {
             $stmt = $this->db->prepare(
-                'SELECT DISTINCT p.person_id, p.full_name, p.date_of_birth, p.birth_year, p.birth_order,
+                'SELECT DISTINCT p.person_id, p.full_name, p.gender, p.date_of_birth, p.birth_year, p.birth_order,
+                        p.spouse_id,
                         f.full_name AS father_name,
                         s.full_name AS spouse_name
                  FROM parent_child pc

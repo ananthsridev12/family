@@ -22,6 +22,8 @@ function _nav_active(string $route, string $current): string {
       <li class="nav-item"><a class="nav-link<?= _nav_active('member/add-marriage', $currentRoute) ?>" href="/index.php?route=member/add-marriage"><span>&#9825;</span> Add Marriage</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active($routePrefix.'/family-list', $currentRoute) ?>" href="/index.php?route=<?= $routePrefix ?>/family-list"><span>&#9776;</span> Family List</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active($routePrefix.'/tree-view', $currentRoute) ?>" href="/index.php?route=<?= $routePrefix ?>/tree-view"><span>&#127803;</span> Tree View</a></li>
+      <li class="nav-item"><a class="nav-link<?= _nav_active($routePrefix.'/svg-tree', $currentRoute) ?>" href="/index.php?route=<?= $routePrefix ?>/svg-tree"><span>&#128065;</span> Visual Tree</a></li>
+      <li class="nav-item"><a class="nav-link<?= _nav_active($routePrefix.'/map-view', $currentRoute) ?>" href="/index.php?route=<?= $routePrefix ?>/map-view"><span>&#127758;</span> Family Map</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active($routePrefix.'/ancestors', $currentRoute) ?>" href="/index.php?route=<?= $routePrefix ?>/ancestors"><span>&#8679;</span> Ancestors</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active($routePrefix.'/descendants', $currentRoute) ?>" href="/index.php?route=<?= $routePrefix ?>/descendants"><span>&#8681;</span> Descendants</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active($routePrefix.'/relationship-finder', $currentRoute) ?>" href="/index.php?route=<?= $routePrefix ?>/relationship-finder"><span>&#128279;</span> Relationships</a></li>

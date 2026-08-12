@@ -113,6 +113,8 @@
       <a class="btn btn-outline-secondary btn-sm btn-pill" href="/index.php?route=admin/reports">Reports</a>
       <a class="btn btn-outline-secondary btn-sm btn-pill" href="/index.php?route=admin/invite-links">Invite Links</a>
       <a class="btn btn-outline-secondary btn-sm btn-pill" href="/index.php?route=admin/export-persons">&#8659; Export CSV</a>
+      <a class="btn btn-outline-secondary btn-sm btn-pill" href="/index.php?route=admin/svg-tree">&#128065; Visual Tree</a>
+      <a class="btn btn-outline-secondary btn-sm btn-pill" href="/index.php?route=admin/map-view">&#127758; Family Map</a>
     </div>
   </div>
 </div>
