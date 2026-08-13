@@ -97,16 +97,19 @@ final class PersonController extends BaseController
     {
         $personId = (int)($_GET['person_id'] ?? 0);
         if ($personId <= 0) {
-            $this->json(null);
-            return;
+            header('Content-Type: application/json; charset=utf-8');
+            echo 'null';
+            exit;
         }
         $person = null;
         try { $person = $this->people->findWithRelations($personId); } catch (Throwable $e) {}
         if ($person === null) {
-            $this->json(null);
-            return;
+            header('Content-Type: application/json; charset=utf-8');
+            echo 'null';
+            exit;
         }
-        $photos = $this->attachments->findFirstPhotosByPersonIds([$personId]);
+        $photos = [];
+        try { $photos = $this->attachments->findFirstPhotosByPersonIds([$personId]); } catch (Throwable $e) {}
         $spouseName = trim((string)($person['spouse_name'] ?? ''));
         $this->json([
             'id'               => (int)$person['person_id'],
@@ -158,13 +161,15 @@ final class PersonController extends BaseController
         }
 
         if (!empty($rows)) {
-            $photos = $this->attachments->findFirstPhotosByPersonIds(
-                array_column($rows, 'person_id')
-            );
-            foreach ($out as &$item) {
-                $item['photo_id'] = (int)($photos[$item['id']] ?? 0);
-            }
-            unset($item);
+            try {
+                $photos = $this->attachments->findFirstPhotosByPersonIds(
+                    array_column($rows, 'person_id')
+                );
+                foreach ($out as &$item) {
+                    $item['photo_id'] = (int)($photos[$item['id']] ?? 0);
+                }
+                unset($item);
+            } catch (Throwable $e) {}
         }
 
         $this->json($out);
