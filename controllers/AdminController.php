@@ -16,6 +16,7 @@ final class AdminController extends BaseController
     private ViewCorrectionModel $viewCorrections;
     private FamilyEventModel $familyEvents;
     private AnnouncementModel $announcementsModel;
+    private MoiModel $moi;
 
     public function __construct(PDO $db)
     {
@@ -33,6 +34,7 @@ final class AdminController extends BaseController
         $this->viewCorrections     = new ViewCorrectionModel($db);
         $this->familyEvents        = new FamilyEventModel($db);
         $this->announcementsModel  = new AnnouncementModel($db);
+        $this->moi                 = new MoiModel($db);
     }
 
     public function dashboard(): void
@@ -1715,6 +1717,132 @@ final class AdminController extends BaseController
         $id = (int)($_POST['event_id']??0);
         if ($id > 0) { try { $this->familyEvents->delete($id); } catch (Throwable $e) {} }
         header('Location: /index.php?route=admin/family-events'); exit;
+    }
+
+    // ── Moi Register ─────────────────────────────────────────────────────
+    public function moiList(): void
+    {
+        $summary = [];
+        try { $summary = $this->moi->summaryByEvent(); } catch (Throwable $e) {}
+        $flash = $_SESSION['flash_success'] ?? null; unset($_SESSION['flash_success']);
+        $this->render('admin/moi_list', ['title' => 'Moi Register', 'summary' => $summary, 'flash' => $flash]);
+    }
+
+    public function moiByEvent(): void
+    {
+        $eventId = (int)($_GET['event_id'] ?? 0);
+        $event   = null;
+        $entries = [];
+        $total   = 0.0;
+        if ($eventId > 0) {
+            try { $event   = $this->familyEvents->findById($eventId); } catch (Throwable $e) {}
+            try { $entries = $this->moi->byEvent($eventId); } catch (Throwable $e) {}
+            try { $total   = $this->moi->totalByEvent($eventId); } catch (Throwable $e) {}
+        }
+        $flash = $_SESSION['flash_success'] ?? null; unset($_SESSION['flash_success']);
+        $this->render('admin/moi_event', [
+            'title'    => 'Moi Entries',
+            'event'    => $event,
+            'event_id' => $eventId,
+            'entries'  => $entries,
+            'total'    => $total,
+            'flash'    => $flash,
+        ]);
+    }
+
+    public function createMoi(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) { http_response_code(403); exit; }
+        $eventId    = (int)($_POST['event_id'] ?? 0);
+        $eventLabel = trim((string)($_POST['event_label'] ?? ''));
+        $eventDate  = trim((string)($_POST['event_date'] ?? ''));
+        $giverName  = trim((string)($_POST['giver_name'] ?? ''));
+        if ($giverName === '') {
+            $_SESSION['flash_error'] = 'Giver name is required.';
+            $this->redirectToMoiPage($eventId > 0 ? $eventId : null);
+        }
+        $amount = round((float)str_replace(',', '', (string)($_POST['amount'] ?? '0')), 2);
+        try {
+            $this->moi->create([
+                'event_id'          => $eventId > 0 ? $eventId : null,
+                'event_label'       => $eventLabel !== '' ? $eventLabel : 'General',
+                'event_date'        => $eventDate !== '' ? $eventDate : null,
+                'giver_name'        => $giverName,
+                'giver_father_name' => trim((string)($_POST['giver_father_name'] ?? '')) ?: null,
+                'giver_location'    => trim((string)($_POST['giver_location'] ?? '')) ?: null,
+                'giver_relation'    => trim((string)($_POST['giver_relation'] ?? '')) ?: null,
+                'amount'            => $amount,
+                'gift_type'         => in_array($_POST['gift_type'] ?? '', ['cash','cheque','gold','gift','other'], true)
+                                           ? (string)$_POST['gift_type'] : 'cash',
+                'notes'             => trim((string)($_POST['notes'] ?? '')) ?: null,
+                'recorded_by'       => (int)(app_user()['user_id'] ?? 0),
+            ]);
+        } catch (Throwable $e) {}
+        $_SESSION['flash_success'] = 'Entry added.';
+        $this->redirectToMoiPage($eventId > 0 ? $eventId : null);
+    }
+
+    public function deleteMoi(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) { http_response_code(403); exit; }
+        $id      = (int)($_POST['moi_id'] ?? 0);
+        $eventId = (int)($_POST['event_id'] ?? 0);
+        if ($id > 0) { try { $this->moi->delete($id); } catch (Throwable $e) {} }
+        $this->redirectToMoiPage($eventId > 0 ? $eventId : null);
+    }
+
+    public function exportMoiCsv(): void
+    {
+        $eventId = (int)($_GET['event_id'] ?? 0);
+        if ($eventId > 0) {
+            $rows  = [];
+            $label = 'moi-event-' . $eventId;
+            try { $rows = $this->moi->byEvent($eventId); } catch (Throwable $e) {}
+            $event = null;
+            try { $event = $this->familyEvents->findById($eventId); } catch (Throwable $e) {}
+            if ($event !== null) {
+                $label = preg_replace('/[^a-z0-9_-]/i', '_', (string)$event['title']);
+            }
+        } else {
+            $rows  = [];
+            $label = 'moi-all';
+            try { $rows = $this->moi->listAll(2000); } catch (Throwable $e) {}
+        }
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="moi-' . $label . '.csv"');
+        $out = fopen('php://output', 'w');
+        if ($out === false) { exit; }
+        fputcsv($out, ['#','Event','Date','Giver Name','Father Name','Location','Relation','Amount','Gift Type','Notes','Recorded By','Recorded At']);
+        $i = 1;
+        foreach ($rows as $r) {
+            fputcsv($out, [
+                $i++,
+                (string)($r['event_label'] ?? ''),
+                (string)($r['event_date'] ?? ''),
+                (string)($r['giver_name'] ?? ''),
+                (string)($r['giver_father_name'] ?? ''),
+                (string)($r['giver_location'] ?? ''),
+                (string)($r['giver_relation'] ?? ''),
+                number_format((float)($r['amount'] ?? 0), 2, '.', ''),
+                (string)($r['gift_type'] ?? ''),
+                (string)($r['notes'] ?? ''),
+                (string)($r['recorder_name'] ?? ''),
+                (string)($r['created_at'] ?? ''),
+            ]);
+        }
+        fclose($out);
+        exit;
+    }
+
+    private function redirectToMoiPage(?int $eventId): void
+    {
+        if ($eventId !== null && $eventId > 0) {
+            header('Location: /index.php?route=admin/moi-event&event_id=' . $eventId);
+        } else {
+            header('Location: /index.php?route=admin/moi-list');
+        }
+        exit;
     }
 
     // ── Announcements ─────────────────────────────────────────────────────

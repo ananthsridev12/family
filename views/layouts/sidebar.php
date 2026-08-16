@@ -37,6 +37,7 @@ function _nav_active(string $route, string $current): string {
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/users', $currentRoute) ?>" href="/index.php?route=admin/users"><span>&#128101;</span> Users</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/announcements', $currentRoute) ?>" href="/index.php?route=admin/announcements"><span>&#128227;</span> Announcements</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/family-events', $currentRoute) ?>" href="/index.php?route=admin/family-events"><span>&#127881;</span> Family Events</a></li>
+      <li class="nav-item"><a class="nav-link<?= _nav_active('admin/moi-list', $currentRoute) ?>" href="/index.php?route=admin/moi-list"><span>&#128176;</span> Moi Register</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/add-proposals', $currentRoute) ?>" href="/index.php?route=admin/add-proposals"><span>&#10010;</span> New Submissions</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/proposals', $currentRoute) ?>" href="/index.php?route=admin/proposals"><span>&#128196;</span> Edit Proposals</a></li>
       <li class="nav-item"><a class="nav-link<?= _nav_active('admin/invite-links', $currentRoute) ?>" href="/index.php?route=admin/invite-links"><span>&#128279;</span> Invite Links</a></li>

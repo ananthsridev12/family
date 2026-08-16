@@ -10,20 +10,30 @@
 
 <?php
 $typeBadge = [
-    'wedding'    => 'bg-warning text-dark',
-    'birth'      => 'bg-success',
-    'graduation' => 'bg-primary',
-    'reunion'    => 'fe-badge-reunion',
-    'death'      => 'bg-secondary',
-    'other'      => 'bg-light text-dark border',
+    'wedding'          => 'bg-warning text-dark',
+    'birth'            => 'bg-success',
+    'graduation'       => 'bg-primary',
+    'reunion'          => 'fe-badge-reunion',
+    'death'            => 'bg-secondary',
+    'other'            => 'bg-light text-dark border',
+    'naming_ceremony'  => 'bg-info text-dark',
+    'ear_piercing'     => 'bg-pink',
+    'puberty_ceremony' => 'bg-purple',
+    'housewarming'     => 'bg-orange',
+    'birthday'         => 'bg-danger',
 ];
 $typeLabel = [
-    'wedding'    => 'Wedding',
-    'birth'      => 'Birth',
-    'graduation' => 'Graduation',
-    'reunion'    => 'Reunion',
-    'death'      => 'Death',
-    'other'      => 'Other',
+    'wedding'          => 'Wedding',
+    'birth'            => 'Birth',
+    'graduation'       => 'Graduation',
+    'reunion'          => 'Reunion',
+    'death'            => 'Death',
+    'other'            => 'Other',
+    'naming_ceremony'  => 'Naming Ceremony',
+    'ear_piercing'     => 'Ear Piercing',
+    'puberty_ceremony' => 'Puberty Ceremony',
+    'housewarming'     => 'Housewarming',
+    'birthday'         => 'Birthday',
 ];
 ?>
 
@@ -36,13 +46,14 @@ $typeLabel = [
           <th>Type</th>
           <th>Date</th>
           <th>Photos</th>
+          <th>Moi</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         <?php if (empty($events)): ?>
         <tr>
-          <td colspan="5" class="text-center text-muted py-4">No family events yet. Add one to get started.</td>
+          <td colspan="6" class="text-center text-muted py-4">No family events yet. Add one to get started.</td>
         </tr>
         <?php endif; ?>
         <?php foreach (($events ?? []) as $ev): ?>
@@ -84,6 +95,12 @@ $typeLabel = [
             <?php endif; ?>
           </td>
           <td>
+            <a href="/index.php?route=admin/moi-event&event_id=<?= $evId ?>"
+               class="btn btn-outline-success btn-sm btn-pill" title="View Moi entries for this event">
+              &#128176; Moi
+            </a>
+          </td>
+          <td>
             <form method="post" action="/index.php?route=admin/delete-family-event"
                   onsubmit="return confirm('Delete this event? This cannot be undone.')">
               <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
@@ -122,6 +139,11 @@ $typeLabel = [
               <select class="form-select" id="feType" name="event_type">
                 <option value="wedding">Wedding</option>
                 <option value="birth">Birth</option>
+                <option value="naming_ceremony">Naming Ceremony</option>
+                <option value="ear_piercing">Ear Piercing</option>
+                <option value="puberty_ceremony">Puberty Ceremony</option>
+                <option value="birthday">Birthday</option>
+                <option value="housewarming">Housewarming</option>
                 <option value="graduation">Graduation</option>
                 <option value="reunion">Reunion</option>
                 <option value="death">Death</option>
@@ -157,9 +179,9 @@ $typeLabel = [
 </div>
 
 <style>
-.fe-badge-reunion {
-  background-color: #7c3aed;
-  color: #fff;
-}
+.fe-badge-reunion { background-color: #7c3aed; color: #fff; }
+.bg-pink          { background-color: #ec4899; color: #fff; }
+.bg-purple        { background-color: #a855f7; color: #fff; }
+.bg-orange        { background-color: #f97316; color: #fff; }
 </style>
 <?php include __DIR__ . '/../layouts/app_end.php'; ?>

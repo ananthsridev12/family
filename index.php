@@ -16,6 +16,7 @@ require_once __DIR__ . '/models/ViewTokenModel.php';
 require_once __DIR__ . '/models/ViewCorrectionModel.php';
 require_once __DIR__ . '/models/FamilyEventModel.php';
 require_once __DIR__ . '/models/AnnouncementModel.php';
+require_once __DIR__ . '/models/MoiModel.php';
 require_once __DIR__ . '/services/RelationshipEngine.php';
 require_once __DIR__ . '/services/ReminderService.php';
 require_once __DIR__ . '/controllers/BaseController.php';
@@ -72,6 +73,28 @@ function csrf_token(): string
 function verify_csrf(string $token): bool
 {
     return isset($_SESSION['csrf_token']) && hash_equals((string)$_SESSION['csrf_token'], $token);
+}
+
+function format_inr(float $amount): string
+{
+    $negative = $amount < 0;
+    $amount   = abs($amount);
+    $str      = number_format($amount, 2, '.', '');
+    [$whole, $dec] = explode('.', $str);
+    if (strlen($whole) > 3) {
+        $last3  = substr($whole, -3);
+        $rest   = substr($whole, 0, -3);
+        $chunks = [];
+        while (strlen($rest) > 2) {
+            $chunks[] = substr($rest, -2);
+            $rest     = substr($rest, 0, -2);
+        }
+        if ($rest !== '') {
+            $chunks[] = $rest;
+        }
+        $whole = implode(',', array_reverse($chunks)) . ',' . $last3;
+    }
+    return ($negative ? '-' : '') . '₹' . $whole . '.' . $dec;
 }
 
 function current_pov_id(): int
@@ -533,6 +556,28 @@ switch ($route) {
     case 'admin/delete-family-event':
         require_role('admin');
         $adminController->deleteFamilyEvent();
+        break;
+
+    // Moi Register
+    case 'admin/moi-list':
+        require_role('admin');
+        $adminController->moiList();
+        break;
+    case 'admin/moi-event':
+        require_role('admin');
+        $adminController->moiByEvent();
+        break;
+    case 'admin/create-moi':
+        require_role('admin');
+        $adminController->createMoi();
+        break;
+    case 'admin/delete-moi':
+        require_role('admin');
+        $adminController->deleteMoi();
+        break;
+    case 'admin/export-moi-csv':
+        require_role('admin');
+        $adminController->exportMoiCsv();
         break;
 
     // Announcements
