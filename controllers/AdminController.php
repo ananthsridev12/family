@@ -1730,23 +1730,26 @@ final class AdminController extends BaseController
 
     public function moiByEvent(): void
     {
-        $eventId = (int)($_GET['event_id'] ?? 0);
-        $event   = null;
-        $entries = [];
-        $total   = 0.0;
+        $eventId     = (int)($_GET['event_id'] ?? 0);
+        $event       = null;
+        $entries     = [];
+        $total       = 0.0;
+        $giverNames  = [];
         if ($eventId > 0) {
             try { $event   = $this->familyEvents->findById($eventId); } catch (Throwable $e) {}
             try { $entries = $this->moi->byEvent($eventId); } catch (Throwable $e) {}
             try { $total   = $this->moi->totalByEvent($eventId); } catch (Throwable $e) {}
         }
+        try { $giverNames = $this->moi->distinctGiverNames(); } catch (Throwable $e) {}
         $flash = $_SESSION['flash_success'] ?? null; unset($_SESSION['flash_success']);
         $this->render('admin/moi_event', [
-            'title'    => 'Moi Entries',
-            'event'    => $event,
-            'event_id' => $eventId,
-            'entries'  => $entries,
-            'total'    => $total,
-            'flash'    => $flash,
+            'title'       => 'Moi Entries',
+            'event'       => $event,
+            'event_id'    => $eventId,
+            'entries'     => $entries,
+            'total'       => $total,
+            'giver_names' => $giverNames,
+            'flash'       => $flash,
         ]);
     }
 
@@ -1770,7 +1773,6 @@ final class AdminController extends BaseController
                 'giver_name'        => $giverName,
                 'giver_father_name' => trim((string)($_POST['giver_father_name'] ?? '')) ?: null,
                 'giver_location'    => trim((string)($_POST['giver_location'] ?? '')) ?: null,
-                'giver_relation'    => trim((string)($_POST['giver_relation'] ?? '')) ?: null,
                 'amount'            => $amount,
                 'gift_type'         => in_array($_POST['gift_type'] ?? '', ['cash','cheque','gold','gift','other'], true)
                                            ? (string)$_POST['gift_type'] : 'cash',
@@ -1813,7 +1815,7 @@ final class AdminController extends BaseController
         header('Content-Disposition: attachment; filename="moi-' . $label . '.csv"');
         $out = fopen('php://output', 'w');
         if ($out === false) { exit; }
-        fputcsv($out, ['#','Event','Date','Giver Name','Father Name','Location','Relation','Amount','Gift Type','Notes','Recorded By','Recorded At']);
+        fputcsv($out, ['#','Event','Date','Giver Name','Father/Husband Name','Location','Amount','Gift Type','Notes','Recorded By','Recorded At']);
         $i = 1;
         foreach ($rows as $r) {
             fputcsv($out, [
@@ -1823,7 +1825,6 @@ final class AdminController extends BaseController
                 (string)($r['giver_name'] ?? ''),
                 (string)($r['giver_father_name'] ?? ''),
                 (string)($r['giver_location'] ?? ''),
-                (string)($r['giver_relation'] ?? ''),
                 number_format((float)($r['amount'] ?? 0), 2, '.', ''),
                 (string)($r['gift_type'] ?? ''),
                 (string)($r['notes'] ?? ''),
@@ -1833,6 +1834,28 @@ final class AdminController extends BaseController
         }
         fclose($out);
         exit;
+    }
+
+    public function submitMoiAsProposal(): void
+    {
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) { http_response_code(403); exit; }
+        $moiId   = (int)($_POST['moi_id'] ?? 0);
+        $eventId = (int)($_POST['event_id'] ?? 0);
+        $entry   = null;
+        if ($moiId > 0) { try { $entry = $this->moi->findById($moiId); } catch (Throwable $e) {} }
+        if ($entry === null) {
+            $this->redirectToMoiPage($eventId > 0 ? $eventId : null);
+        }
+        $proposedData = [
+            'full_name'   => (string)($entry['giver_name'] ?? ''),
+            'father_name' => (string)($entry['giver_father_name'] ?? ''),
+            'gender'      => 'unknown',
+            'admin_note'  => 'Submitted from Moi Register: ' . (string)($entry['event_label'] ?? ''),
+        ];
+        $userId = (int)(app_user()['user_id'] ?? 0);
+        try { $this->addProposals->create($userId, $proposedData); } catch (Throwable $e) {}
+        $_SESSION['flash_success'] = htmlspecialchars((string)($entry['giver_name'] ?? ''), ENT_QUOTES, 'UTF-8') . ' submitted as a pending family member.';
+        $this->redirectToMoiPage($eventId > 0 ? $eventId : null);
     }
 
     private function redirectToMoiPage(?int $eventId): void

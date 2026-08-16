@@ -15,10 +15,10 @@ class MoiModel
         $stmt = $this->db->prepare('
             INSERT INTO moi_entries
                 (event_id, event_label, event_date, giver_name, giver_father_name,
-                 giver_location, giver_relation, amount, gift_type, notes, recorded_by)
+                 giver_location, amount, gift_type, notes, recorded_by)
             VALUES
                 (:event_id, :event_label, :event_date, :giver_name, :giver_father_name,
-                 :giver_location, :giver_relation, :amount, :gift_type, :notes, :recorded_by)
+                 :giver_location, :amount, :gift_type, :notes, :recorded_by)
         ');
         $stmt->execute([
             ':event_id'          => $data['event_id'] ?? null,
@@ -27,7 +27,6 @@ class MoiModel
             ':giver_name'        => $data['giver_name'],
             ':giver_father_name' => $data['giver_father_name'] ?? null,
             ':giver_location'    => $data['giver_location'] ?? null,
-            ':giver_relation'    => $data['giver_relation'] ?? null,
             ':amount'            => $data['amount'],
             ':gift_type'         => $data['gift_type'] ?? 'cash',
             ':notes'             => $data['notes'] ?? null,
@@ -96,6 +95,16 @@ class MoiModel
             ORDER BY me.event_date DESC, me.event_label ASC
         ');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function distinctGiverNames(int $limit = 300): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT DISTINCT giver_name FROM moi_entries ORDER BY giver_name ASC LIMIT :lim'
+        );
+        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
     public function listAll(int $limit = 500): array

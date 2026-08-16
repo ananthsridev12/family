@@ -579,6 +579,10 @@ switch ($route) {
         require_role('admin');
         $adminController->exportMoiCsv();
         break;
+    case 'admin/submit-moi-as-member':
+        require_role('admin');
+        $adminController->submitMoiAsProposal();
+        break;
 
     // Announcements
     case 'admin/announcements':
