@@ -128,12 +128,10 @@ $prefillDate = !empty($event['event_date']) ? (string)$event['event_date'] : '';
           <div class="row g-3 mb-3">
             <div class="col-12 col-md-4">
               <label class="form-label fw-600" for="moiGiverName">Giver Name <span class="text-danger">*</span></label>
-              <div class="position-relative">
-                <input class="form-control" id="moiGiverName" name="giver_name"
-                       required autocomplete="off"
-                       placeholder="Search family or type name…">
-                <div id="moiGiverResults" class="search-results" style="display:none;"></div>
-              </div>
+              <input class="form-control" id="moiGiverName" name="giver_name"
+                     required autocomplete="off"
+                     placeholder="Search family or type name…">
+              <div id="moiGiverResults" class="list-group mt-1 search-results"></div>
             </div>
             <div class="col-12 col-md-4">
               <label class="form-label fw-600" for="moiFatherName">Father's / Husband's Name</label>
@@ -183,49 +181,41 @@ $prefillDate = !empty($event['event_date']) ? (string)$event['event_date'] : '';
 
 <script>
 (function () {
-  var modal   = document.getElementById('addMoiModal');
-  if (!modal) return;
-  modal.addEventListener('shown.bs.modal', function () {
-    var input       = document.getElementById('moiGiverName');
-    var results     = document.getElementById('moiGiverResults');
-    var fatherInput = document.getElementById('moiFatherName');
-    if (!input || !results) return;
-    var timer;
+  var input       = document.getElementById('moiGiverName');
+  var results     = document.getElementById('moiGiverResults');
+  var fatherInput = document.getElementById('moiFatherName');
+  if (!input || !results) return;
 
-    input.addEventListener('input', function () {
-      clearTimeout(timer);
-      var q = input.value.trim();
-      if (q.length < 2) { results.style.display = 'none'; return; }
-      timer = setTimeout(function () {
-        fetch('/index.php?route=person/search&q=' + encodeURIComponent(q))
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            results.innerHTML = '';
-            if (!Array.isArray(data) || !data.length) { results.style.display = 'none'; return; }
-            data.forEach(function (p) {
-              var item = document.createElement('div');
-              item.className = 'search-result-item';
-              var sub = p.father_name ? ' · ' + p.father_name : '';
-              item.textContent = p.full_name + sub;
-              item.addEventListener('mousedown', function (e) {
-                e.preventDefault();
-                input.value = p.full_name;
-                if (fatherInput && p.father_name && fatherInput.value.trim() === '') {
-                  fatherInput.value = p.father_name;
-                }
-                results.style.display = 'none';
-              });
-              results.appendChild(item);
+  var timer;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    results.innerHTML = '';
+    if (q.length < 2) return;
+    timer = setTimeout(function () {
+      fetch('/index.php?route=person/search&q=' + encodeURIComponent(q), {
+        headers: { 'Accept': 'application/json' }
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          results.innerHTML = '';
+          list.forEach(function (p) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'list-group-item list-group-item-action';
+            btn.textContent = p.full_name + (p.father_name ? ' — ' + p.father_name : '');
+            btn.addEventListener('click', function () {
+              input.value = p.full_name;
+              if (fatherInput && p.father_name && fatherInput.value.trim() === '') {
+                fatherInput.value = p.father_name;
+              }
+              results.innerHTML = '';
             });
-            results.style.display = 'block';
-          })
-          .catch(function () { results.style.display = 'none'; });
-      }, 280);
-    });
-
-    input.addEventListener('blur', function () {
-      setTimeout(function () { results.style.display = 'none'; }, 200);
-    });
+            results.appendChild(btn);
+          });
+        })
+        .catch(function () { results.innerHTML = ''; });
+    }, 300);
   });
 })();
 </script>
