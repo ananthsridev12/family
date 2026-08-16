@@ -583,6 +583,10 @@ switch ($route) {
         require_role('admin');
         $adminController->submitMoiAsProposal();
         break;
+    case 'admin/moi-location-search':
+        require_role('admin');
+        $adminController->moiLocationSearch();
+        break;
 
     // Announcements
     case 'admin/announcements':

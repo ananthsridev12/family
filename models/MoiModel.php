@@ -97,6 +97,19 @@ class MoiModel
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function searchLocations(string $q, int $limit = 15): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT DISTINCT giver_location FROM moi_entries
+             WHERE giver_location IS NOT NULL AND giver_location LIKE :q
+             ORDER BY giver_location ASC LIMIT :lim'
+        );
+        $stmt->bindValue(':q', '%' . $q . '%');
+        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
     public function distinctGiverNames(int $limit = 300): array
     {
         $stmt = $this->db->prepare(

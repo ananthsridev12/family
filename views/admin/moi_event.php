@@ -141,7 +141,8 @@ $prefillDate = !empty($event['event_date']) ? (string)$event['event_date'] : '';
             <div class="col-12 col-md-4">
               <label class="form-label fw-600" for="moiLocation">Location / Village</label>
               <input class="form-control" id="moiLocation" name="giver_location"
-                     placeholder="e.g. Madurai">
+                     autocomplete="off" placeholder="e.g. Madurai">
+              <div id="moiLocationResults" class="list-group mt-1 search-results"></div>
             </div>
           </div>
 
@@ -216,6 +217,40 @@ $prefillDate = !empty($event['event_date']) ? (string)$event['event_date'] : '';
         })
         .catch(function () { results.innerHTML = ''; });
     }, 300);
+  });
+})();
+
+(function () {
+  var locInput   = document.getElementById('moiLocation');
+  var locResults = document.getElementById('moiLocationResults');
+  if (!locInput || !locResults) return;
+  var timer;
+  locInput.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = locInput.value.trim();
+    locResults.innerHTML = '';
+    if (q.length < 1) return;
+    timer = setTimeout(function () {
+      fetch('/index.php?route=admin/moi-location-search&q=' + encodeURIComponent(q), {
+        headers: { 'Accept': 'application/json' }
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          locResults.innerHTML = '';
+          list.forEach(function (loc) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'list-group-item list-group-item-action';
+            btn.textContent = loc;
+            btn.addEventListener('click', function () {
+              locInput.value = loc;
+              locResults.innerHTML = '';
+            });
+            locResults.appendChild(btn);
+          });
+        })
+        .catch(function () { locResults.innerHTML = ''; });
+    }, 250);
   });
 })();
 </script>

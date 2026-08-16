@@ -1836,6 +1836,17 @@ final class AdminController extends BaseController
         exit;
     }
 
+    public function moiLocationSearch(): void
+    {
+        $q = trim((string)($_GET['q'] ?? ''));
+        header('Content-Type: application/json; charset=utf-8');
+        if (mb_strlen($q) < 1) { echo '[]'; exit; }
+        $rows = [];
+        try { $rows = $this->moi->searchLocations($q, 15); } catch (Throwable $e) {}
+        echo json_encode(array_values($rows), JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     public function submitMoiAsProposal(): void
     {
         if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) { http_response_code(403); exit; }
